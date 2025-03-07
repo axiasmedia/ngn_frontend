@@ -1,36 +1,95 @@
 "use client"
 
+import type React from "react"
+
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { FormField } from "./form-field"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { DateTimePicker } from "@/components/ui/date-picker"
+import { Textarea } from "@/components/ui/textarea"
+import { useIncidentForm } from "@/hooks/useIncidentForm"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { AlertCircle } from "lucide-react"
 import { MultiUserSelect } from "./multi-user-select"
-
-// Mock users data - in a real app, this would come from an API
-const mockUsers = [
-  { id: "user1", name: "John Doe" },
-  { id: "user2", name: "Jane Smith" },
-  { id: "user3", name: "Robert Johnson" },
-  { id: "user4", name: "Emily Davis" },
-  { id: "user5", name: "Michael Brown" },
-]
+import { DateTimePicker } from "@/components/ui/date-picker"
+import { useAuth } from "@/components/auth/auth-provider"
 
 export function IncidentForm() {
-  // Form state
+  const { isSubmitting, error, handleSubmit, handleFileChange } = useIncidentForm()
   const [peopleAffected, setPeopleAffected] = useState<string>("individual")
-  const [selectedUser, setSelectedUser] = useState<string>("")
-  const [selectedUsers, setSelectedUsers] = useState<Array<{ id: string; name: string }>>([])
+  const [selectedUsers, setSelectedUsers] = useState<Array<{ id: number; name: string }>>([])
   const [availabilityDate, setAvailabilityDate] = useState<Date | undefined>(undefined)
+  const [contactMethod, setContactMethod] = useState<string>("")
+  const { userInfo } = useAuth() // Get user info from auth context
+
+  // Update contact method when it changes
+  const handleContactMethodChange = (value: string) => {
+    setContactMethod(value)
+  }
+
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+
+    // Determine the contact method value
+    let contactMethodValue = contactMethod
+    if (contactMethod === "email" && userInfo?.email) {
+      contactMethodValue = userInfo.email
+    }
+
+    const payload = {
+      Title: formData.get("incident-title") as string,
+      Description: formData.get("description") as string,
+      ContactMethod: contactMethodValue as string,
+      Type: "Tech Support",
+      Availability: availabilityDate?.toISOString() || new Date().toISOString(),
+      // Ensure numeric values are numbers, not strings
+      CreatedBy: userInfo?.id as number,
+      Status: 1,
+      ClientID: userInfo?.clientId as number,
+      AffectedProduct: Number(formData.get("affected-item")),
+      AffectedUsers:
+        peopleAffected === "individual"
+          ? [userInfo?.id as number]
+          : selectedUsers.length > 0
+            ? selectedUsers.map((user) => user.id)
+            : [45, 46, 47],
+    }
+
+    // Get the files from the file input
+    const fileInput = e.currentTarget.querySelector('input[type="file"]') as HTMLInputElement
+    const files = fileInput?.files ? Array.from(fileInput.files) : []
+
+    try {
+      console.log("Submitting ticket with payload:", payload)
+      console.log("Files:", files)
+
+      // Explicitly pass the files array
+      const success = await handleSubmit(payload, files)
+      if (success) {
+        window.location.href = "/incidents/list"
+      }
+    } catch (error) {
+      console.error("Error submitting form:", error)
+    }
+  }
 
   return (
     <Card>
       <CardContent className="p-6">
         <h1 className="text-2xl font-semibold mb-6 text-primary">Report a general IT issue</h1>
-        <form className="space-y-6">
+
+        {error && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        <form onSubmit={onSubmit} className="space-y-6">
           {/* How many people affected */}
           <div className="space-y-2">
             <h2 className="text-lg font-medium text-primary">How many people is this issue affecting?</h2>
@@ -53,37 +112,39 @@ export function IncidentForm() {
             </h2>
 
             {peopleAffected === "individual" ? (
-              <Select value={selectedUser} onValueChange={setSelectedUser}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select user from directory" />
-                </SelectTrigger>
-                <SelectContent>
-                  {mockUsers.map((user) => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="p-3 border rounded-md bg-muted/20">
+                <p className="text-sm">You are reporting this issue for yourself</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  User ID: {userInfo?.id || "Not available"} • {userInfo?.email || "Unknown email"}
+                </p>
+              </div>
             ) : (
-              <MultiUserSelect users={mockUsers} selectedUsers={selectedUsers} onUserSelect={setSelectedUsers} />
+              <MultiUserSelect
+                users={[
+                  { id: 45, name: "John Doe" },
+                  { id: 46, name: "Jane Smith" },
+                  { id: 47, name: "Bob Wilson" },
+                ]}
+                selectedUsers={selectedUsers}
+                onUserSelect={setSelectedUsers}
+              />
             )}
           </div>
 
           {/* What is being affected */}
           <div className="space-y-2">
             <h2 className="text-lg font-medium text-primary">What is being affected?</h2>
-            <Select>
+            <Select name="affected-item">
               <SelectTrigger>
                 <SelectValue placeholder="Select affected item" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="laptop">Laptop</SelectItem>
-                <SelectItem value="desktop">Desktop</SelectItem>
-                <SelectItem value="application">Application</SelectItem>
-                <SelectItem value="handset">Handset</SelectItem>
-                <SelectItem value="printer">Printer</SelectItem>
-                <SelectItem value="softphone">Softphone</SelectItem>
+                <SelectItem value="1">Laptop</SelectItem>
+                <SelectItem value="2">desktop</SelectItem>
+                <SelectItem value="3">Application</SelectItem>
+                <SelectItem value="4">handset</SelectItem>
+                <SelectItem value="5">Printer</SelectItem>
+                <SelectItem value="6">Softphone</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -91,55 +152,39 @@ export function IncidentForm() {
           {/* Incident title */}
           <div className="space-y-2">
             <h2 className="text-lg font-medium text-primary">Incident title</h2>
-            <FormField id="incident-title" label="" placeholder="Enter a title for your incident" />
+            <Input name="incident-title" placeholder="Enter a title for your incident" required />
           </div>
 
           {/* Issue description */}
           <div className="space-y-2">
             <h2 className="text-lg font-medium text-primary">Issue description</h2>
-            <FormField id="description" label="" placeholder="Describe the issue in detail" isTextarea={true} />
+            <Textarea
+              name="description"
+              placeholder="Describe the issue in detail"
+              className="min-h-[100px]"
+              required
+            />
           </div>
 
-          {/* Current location */}
+          {/* Contact Method */}
           <div className="space-y-2">
-            <h2 className="text-lg font-medium text-primary">Current location</h2>
-            <Select>
-              <SelectTrigger>
-                <SelectValue placeholder="Select your location" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="office1">Main Office</SelectItem>
-                <SelectItem value="office2">Branch Office</SelectItem>
-                <SelectItem value="remote">Remote/Home</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Preferred contact method */}
-          <div className="space-y-2">
-            <h2 className="text-lg font-medium text-primary">Preferred contact method</h2>
-            <Select>
+            <h2 className="text-lg font-medium text-primary">Contact Method</h2>
+            <Select name="contact-method" value={contactMethod} onValueChange={handleContactMethodChange}>
               <SelectTrigger>
                 <SelectValue placeholder="Select contact method" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="email">Your Email ({userInfo?.email || "Not available"})</SelectItem>
                 <SelectItem value="portal">Portal</SelectItem>
-                <SelectItem value="email">Email</SelectItem>
                 <SelectItem value="phone">Phone</SelectItem>
               </SelectContent>
             </Select>
-          </div>
 
-          {/* Attachments */}
-          <div className="space-y-2">
-            <h2 className="text-lg font-medium text-primary">Attachments</h2>
-            <FormField
-              id="attachments"
-              label=""
-              type="file"
-              placeholder="Upload screenshots or documents"
-              accept="image/*,.pdf,.doc,.docx"
-            />
+            {contactMethod === "email" && userInfo?.email && (
+              <p className="text-sm text-muted-foreground mt-1">
+                Your email address ({userInfo.email}) will be used as the contact method.
+              </p>
+            )}
           </div>
 
           {/* Availability */}
@@ -148,9 +193,22 @@ export function IncidentForm() {
             <DateTimePicker date={availabilityDate} setDate={setAvailabilityDate} />
           </div>
 
+          {/* File attachments */}
+          <div className="space-y-2">
+            <h2 className="text-lg font-medium text-primary">Attachments</h2>
+            <Input
+              type="file"
+              multiple
+              onChange={(e) => handleFileChange(e.target.files)}
+              className="cursor-pointer"
+              accept="image/*,.pdf,.doc,.docx"
+            />
+            <p className="text-sm text-muted-foreground">Supported file types: Images, PDF, Word documents</p>
+          </div>
+
           {/* Submit button */}
-          <Button type="submit" className="w-full">
-            Submit
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? "Submitting..." : "Submit"}
           </Button>
         </form>
       </CardContent>
