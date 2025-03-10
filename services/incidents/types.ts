@@ -13,11 +13,11 @@ export interface Incident {
   Location: string | null
   AssignedToUser: string | null
   Availability: string
-  CreatedDatatime: string 
-  ModDatetime: string | null 
-  AssignedHWMS: string | null 
+  CreatedDatatime: string // Updated field name to match API
+  ModDatetime: string | null // Updated field name to match API
+  AssignedHWMS: string | null // Updated field name to match API
   AssignedVendor: string | null
-  NeedHardware: number
+  NeedHardware: number // Updated field name to match API
   IssueType: string | null
   SubIssueType: string | null
 }
@@ -57,12 +57,6 @@ export interface IncidentDetail {
   updatedAt: string
 }
 
-export interface CreateIncidentPayload {
-  title: string
-  description: string
-  priority: string
-}
-
 export interface IncidentNote {
   id: string
   text: string
@@ -95,5 +89,45 @@ export interface Product {
   id: number
   name: string
   type: string
+}
+
+// Add new interface for queue tickets that includes ClientName and AssignedUserName
+export interface QueueTicket {
+  IDTicket: number
+  CodTicket: string
+  ClientID: number
+  Title: string
+  Description: string
+  Status: number
+  Type: string
+  AffectedProduct: number
+  Priority: string
+  CreatedBy: number
+  ContactMethod: string
+  Location: string | null
+  AssignedToUser: number | null
+  Availability: string
+  CreatedDatatime: string
+  ModDatetime: string | null
+  AssignedHWMS: number | null
+  AssignedVendor: number | null
+  NeedHardware: number
+  IssueType: string | null
+  SubIssueType: string | null
+  ClientName: string
+  AssignedUserName: string
+}
+
+// Update the incidents service interface
+export interface IncidentsService {
+  getIncidents: (userId: number) => Promise<Incident[]>
+  getQueueTickets: () => Promise<QueueTicket[]>
+  // ... other methods
+}
+
+// Add this new interface for ticket statuses
+export interface TicketStatus {
+  IDStatus: number
+  Description: string
 }
 

@@ -1,22 +1,35 @@
 "use client"
 
-import { AlertTriangle, Clock, CheckCircle } from "lucide-react"
+import { AlertTriangle, Clock, CheckCircle, ExternalLink } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { useIncidents } from "@/hooks/useIncidents"
 import { getStatusString } from "@/services/incidents/types"
 import { useAuth } from "@/components/auth/auth-provider"
+import Link from "next/link"
 
 export function IncidentList() {
   const { userInfo } = useAuth()
   const { incidents, loading, error } = useIncidents(userInfo?.id)
 
-  
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    })
+  // Function to safely format date
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "Not updated"
+    try {
+      const date = new Date(dateString)
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return "Invalid Date"
+      }
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    } catch (error) {
+      console.error("Error formatting date:", error)
+      return "Invalid Date"
+    }
   }
 
   // Function to get status icon
@@ -77,7 +90,7 @@ export function IncidentList() {
   return (
     <div className="space-y-4">
       {incidents.map((incident) => (
-        <Card key={incident.IDTicket} className="hover:shadow-md transition-shadow">
+        <Card key={incident.CodTicket} className="hover:shadow-md transition-shadow">
           <CardContent className="p-4">
             <div className="flex justify-between items-start">
               <div>
@@ -89,11 +102,19 @@ export function IncidentList() {
                   </span>
                 </div>
                 <h3 className="font-medium">{incident.Title}</h3>
-                <p className="text-sm text-muted-foreground mt-1">Incident ID: {incident.CodTicket}</p>
+                <p className="text-sm text-muted-foreground mt-1">Ticket ID: {incident.CodTicket}</p>
               </div>
-              <div className="text-right text-sm text-muted-foreground">
-                <p>Created: {formatDate(incident.CreatedDatatime)}</p>
-                <p>Updated: {incident.ModDatetime ? formatDate(incident.ModDatetime) : "Not updated"}</p>
+              <div className="text-right">
+                <div className="text-sm text-muted-foreground mb-2">
+                  <p>Created: {formatDate(incident.CreatedDatatime)}</p>
+                  <p>Updated: {formatDate(incident.ModDatetime)}</p>
+                </div>
+                <Link href={`/incidents/${incident.CodTicket}`}>
+                  <Button size="sm" variant="outline" className="flex items-center gap-1">
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    View Details
+                  </Button>
+                </Link>
               </div>
             </div>
           </CardContent>

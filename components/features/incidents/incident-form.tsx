@@ -175,8 +175,6 @@ export function IncidentForm() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="email">Your Email ({userInfo?.email || "Not available"})</SelectItem>
-                <SelectItem value="portal">Portal</SelectItem>
-                <SelectItem value="phone">Phone</SelectItem>
               </SelectContent>
             </Select>
 

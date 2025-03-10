@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, AlertCircle } from "lucide-react"
+import { ArrowLeft, AlertCircle, Clock, CheckCircle, Loader2, Info } from "lucide-react"
 import Link from "next/link"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
@@ -17,7 +18,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Separator } from "@/components/ui/separator"
+import api from "@/services/api"
+import { userService } from "@/services/user/user.service"
+import { incidentsService } from "@/services/incidents/incidents.service"
 
 interface Note {
   id: string
@@ -26,84 +34,345 @@ interface Note {
   createdBy: string
 }
 
-// Mock ticket data - in a real app, this would come from an API
-const mockTicket = {
-  id: "40-29012025",
-  title: "Email not working",
-  description: "User cannot access their email account",
-  account: "Chrysalis Health",
-  contract: "Chrysalis Support",
-  owner: "John Smith",
-  openDate: "25/01/2025 05:24 PM",
-  dueDate: "27/01/2025 05:24 PM",
-  createdBy: "Sarah Johnson",
-  assignee: "Tech Support Team",
-  priority: "High",
-  status: "Open",
-  notes: [
-    {
-      id: "1",
-      text: "Initial investigation started. Checking email server logs.",
-      createdAt: "25/01/2025 05:30 PM",
-      createdBy: "Tech Support Team",
-    },
-    {
-      id: "2",
-      text: "Found issue with account permissions. Working on fix.",
-      createdAt: "25/01/2025 06:15 PM",
-      createdBy: "Tech Support Team",
-    },
-  ],
+interface Ticket {
+  IDTicket: number
+  CodTicket: string
+  ClientID: number
+  ClientName?: string
+  Title: string
+  Description: string
+  Status: number
+  Type: string
+  AffectedProduct: number
+  Priority: string
+  CreatedBy: number
+  CreatedByName?: string
+  ContactMethod: string
+  Location: string | null
+  AssignedToUser: number | null
+  AssignedUserName?: string
+  Availability: string
+  CreatedDatatime: string
+  ModDatetime: string | null
+  AssignedHWMS: number | null
+  AssignedVendor: number | null
+  NeedHardware: number
+  IssueType: string | null
+  SubIssueType: string | null
+  notes?: Note[]
+  requiresChange?: boolean
+  assignType?: string
+  assignedTo?: string
 }
 
-export default function TicketDetailPage({ params }: { params: { id: string } }) {
-  const [ticket, setTicket] = useState(mockTicket)
-  const [notes, setNotes] = useState<Note[]>(mockTicket.notes)
+export default function TicketDetailPage() {
+  const params = useParams()
+  const router = useRouter()
+  const codTicket = params.id as string
+
+  const [ticket, setTicket] = useState<Ticket | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [notes, setNotes] = useState<Note[]>([])
   const [newNote, setNewNote] = useState("")
-  const [newStatus, setNewStatus] = useState(ticket.status)
+  const [newStatus, setNewStatus] = useState<number>(1)
   const [statusNote, setStatusNote] = useState("")
   const [statusError, setStatusError] = useState(false)
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
+  const [requiresChange, setRequiresChange] = useState(false)
+  const [assignType, setAssignType] = useState<string>("technician")
+  const [assignedTo, setAssignedTo] = useState<string>("")
+  const [submittingNote, setSubmittingNote] = useState(false)
 
-  const handleAddNote = () => {
-    if (!newNote.trim()) return
+  useEffect(() => {
+    const fetchTicket = async () => {
+      try {
+        setLoading(true)
 
-    const note = {
-      id: Date.now().toString(),
-      text: newNote,
-      createdAt: new Date().toLocaleString(),
-      createdBy: "Tech Support Team",
+        // Fetch all tickets from the queue
+        const response = await api.get("/ticket/queu")
+
+        if (response.data && Array.isArray(response.data)) {
+          // Find the specific ticket with matching CodTicket
+          const ticketData = response.data.find((t: Ticket) => t.CodTicket === codTicket)
+
+          if (ticketData) {
+            // Get creator name
+            let creatorName = "Unknown"
+            if (ticketData.CreatedBy) {
+              try {
+                creatorName = await userService.getUserName(ticketData.CreatedBy)
+              } catch (err) {
+                console.error("Error fetching creator name:", err)
+              }
+            }
+
+            // Get assignee name if assigned
+            let assigneeName = "Unassigned"
+            if (ticketData.AssignedToUser) {
+              try {
+                assigneeName = await userService.getUserName(ticketData.AssignedToUser)
+              } catch (err) {
+                console.error("Error fetching assignee name:", err)
+              }
+            }
+
+            // Set the ticket with additional information
+            const enrichedTicket = {
+              ...ticketData,
+              CreatedByName: creatorName,
+              AssignedUserName: assigneeName,
+            }
+
+            setTicket(enrichedTicket)
+            setNewStatus(enrichedTicket.Status)
+            setRequiresChange(!!enrichedTicket.NeedHardware)
+
+            // Fetch ticket updates from TicketUpdate table
+            try {
+              const ticketUpdates = await incidentsService.getTicketUpdates(codTicket)
+
+              if (ticketUpdates && ticketUpdates.length > 0) {
+                // Convert ticket updates to notes format
+                const updateNotes = await Promise.all(
+                  ticketUpdates.map(async (update: any) => {
+                    // Get the status description for this update
+                    let statusDescription = "Unknown"
+                    try {
+                      statusDescription = await incidentsService.getStatusDescription(update.Status)
+                    } catch (err) {
+                      console.error("Error fetching status description:", err)
+                    }
+
+                    // Get the agent name who made the update
+                    let agentName = `Agent ID: ${update.CreatedByAgent}`
+                    if (update.CreatedByAgent) {
+                      try {
+                        agentName = await userService.getUserName(update.CreatedByAgent)
+                      } catch (err) {
+                        console.error("Error fetching agent name:", err)
+                      }
+                    }
+
+                    return {
+                      id: update.IDAuton.toString(),
+                      text:
+                        update.Status === 1 ? "Ticket created" : `${update.Comments} (Status: ${statusDescription})`,
+                      createdAt: formatDate(update.CreatedDatetime),
+                      createdBy: update.CreatedByAgent === 0 ? "System" : agentName,
+                    }
+                  }),
+                )
+
+                setNotes(updateNotes)
+              } else {
+                // If no updates found, create an initial note
+                const initialNotes = [
+                  {
+                    id: "1",
+                    text: "Ticket created in the system.",
+                    createdAt: new Date(enrichedTicket.CreatedDatatime).toLocaleString(),
+                    createdBy: creatorName,
+                  },
+                ]
+                setNotes(initialNotes)
+              }
+            } catch (updateErr) {
+              console.error("Error fetching ticket updates:", updateErr)
+              // Fallback to initial note
+              const initialNotes = [
+                {
+                  id: "1",
+                  text: "Ticket created in the system.",
+                  createdAt: new Date(enrichedTicket.CreatedDatatime).toLocaleString(),
+                  createdBy: creatorName,
+                },
+              ]
+              setNotes(initialNotes)
+            }
+          } else {
+            setError(`Ticket ${codTicket} not found`)
+          }
+        } else {
+          setError("Invalid response format from API")
+        }
+      } catch (err) {
+        console.error("Error fetching ticket:", err)
+        setError("Failed to load ticket details")
+      } finally {
+        setLoading(false)
+      }
     }
 
-    setNotes([...notes, note])
-    setNewNote("")
+    fetchTicket()
+  }, [codTicket])
+
+  const handleAddNote = async () => {
+    if (!newNote.trim()) return
+
+    try {
+      setSubmittingNote(true)
+
+      // In a real implementation, this would be an API call
+      // await api.post(`/ticket/${codTicket}/notes`, { text: newNote })
+
+      const note = {
+        id: Date.now().toString(),
+        text: newNote,
+        createdAt: new Date().toLocaleString(),
+        createdBy: "Tech Support Team",
+      }
+
+      setNotes([...notes, note])
+      setNewNote("")
+    } catch (err) {
+      console.error("Failed to add note:", err)
+    } finally {
+      setSubmittingNote(false)
+    }
   }
 
-  const handleStatusChange = () => {
+  const handleStatusChange = async () => {
     if (!statusNote.trim()) {
       setStatusError(true)
       return
     }
 
-    // Add the status change note
-    const statusChangeNote = {
-      id: Date.now().toString(),
-      text: `Status changed from "${ticket.status}" to "${newStatus}": ${statusNote}`,
-      createdAt: new Date().toLocaleString(),
-      createdBy: "Tech Support Team",
+    try {
+      // Use the service to update the ticket status
+      const success = await incidentsService.updateTicketStatus(ticket.CodTicket, newStatus, statusNote)
+
+      if (success) {
+        // Get the status description for the new status
+        let statusDescription = getStatusText(newStatus)
+        try {
+          statusDescription = await incidentsService.getStatusDescription(newStatus)
+        } catch (err) {
+          console.error("Error fetching status description:", err)
+        }
+
+        // Add the status change note
+        const statusChangeNote = {
+          id: Date.now().toString(),
+          text: `Status changed from "${getStatusText(ticket?.Status || 1)}" to "${statusDescription}": ${statusNote}`,
+          createdAt: new Date().toLocaleString(),
+          createdBy: "Tech Support Team",
+        }
+
+        // Update ticket status and add the note
+        setTicket({ ...ticket, Status: newStatus })
+        setNotes([...notes, statusChangeNote])
+
+        // Reset form
+        setStatusNote("")
+        setStatusError(false)
+        setIsStatusDialogOpen(false)
+      } else {
+        throw new Error("Failed to update ticket status")
+      }
+    } catch (err) {
+      console.error("Failed to update status:", err)
+      // Show specific error message if it's a status validation error
+      if (err instanceof Error && err.message.includes("Invalid status ID")) {
+        setError(`${err.message} Please select a valid status.`)
+      } else {
+        setError("Failed to update ticket status. Please try again.")
+      }
     }
-
-    // Update ticket status and add the note
-    setTicket({ ...ticket, status: newStatus })
-    setNotes([...notes, statusChangeNote])
-
-    // Reset form
-    setStatusNote("")
-    setStatusError(false)
-    setIsStatusDialogOpen(false)
   }
 
-  const getPriorityColor = (priority: string) => {
+  const handleHardwareChange = async () => {
+    if (!ticket) return
+
+    try {
+      // In a real implementation, this would be an API call
+      // await api.patch(`/ticket/${codTicket}/hardware`, {
+      //   needsHardware: requiresChange,
+      //   assignType,
+      //   assignedTo
+      // })
+
+      const assigneeName =
+        assignType === "technician"
+          ? {
+              tech1: "John Smith",
+              tech2: "Maria Garcia",
+              tech3: "David Johnson",
+            }[assignedTo] || "Unknown"
+          : {
+              vendor1: "TechSupply Inc.",
+              vendor2: "Hardware Solutions Ltd.",
+              vendor3: "IT Equipment Partners",
+            }[assignedTo] || "Unknown"
+
+      // Add a note about the hardware change
+      const hardwareNote = {
+        id: Date.now().toString(),
+        text: requiresChange
+          ? `Ticket marked as requiring hardware/software change. Assigned to ${assignType} ${assigneeName}.`
+          : "Ticket marked as not requiring hardware/software change.",
+        createdAt: new Date().toLocaleString(),
+        createdBy: "Tech Support Team",
+      }
+
+      // Update ticket and add note
+      setTicket({
+        ...ticket,
+        NeedHardware: requiresChange ? 1 : 0,
+        assignType: requiresChange ? assignType : undefined,
+        assignedTo: requiresChange ? assignedTo : undefined,
+      })
+      setNotes([...notes, hardwareNote])
+    } catch (err) {
+      console.error("Failed to update hardware requirements:", err)
+    }
+  }
+
+  // Helper functions for status and priority display
+  const getStatusText = (status: number): string => {
+    switch (status) {
+      case 1:
+        return "Open"
+      case 2:
+        return "In Progress"
+      case 3:
+        return "Resolved"
+      case 4:
+        return "Closed"
+      default:
+        return "Unknown"
+    }
+  }
+
+  const getStatusColor = (status: number): string => {
+    switch (status) {
+      case 1:
+        return "bg-blue-100 text-blue-800"
+      case 2:
+        return "bg-yellow-100 text-yellow-800"
+      case 3:
+        return "bg-green-100 text-green-800"
+      case 4:
+        return "bg-gray-100 text-gray-800"
+      default:
+        return "bg-gray-100 text-gray-800"
+    }
+  }
+
+  const getStatusIcon = (status: number) => {
+    switch (status) {
+      case 1:
+        return <AlertCircle className="h-4 w-4" />
+      case 2:
+        return <Clock className="h-4 w-4" />
+      case 3:
+        return <CheckCircle className="h-4 w-4" />
+      default:
+        return <Info className="h-4 w-4" />
+    }
+  }
+
+  const getPriorityColor = (priority: string): string => {
     switch (priority.toLowerCase()) {
       case "high":
         return "bg-red-100 text-red-800"
@@ -116,17 +385,45 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
     }
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "open":
-        return "bg-blue-100 text-blue-800"
-      case "in progress":
-        return "bg-yellow-100 text-yellow-800"
-      case "resolved":
-        return "bg-green-100 text-green-800"
-      default:
-        return "bg-gray-100 text-gray-800"
+  // Format date for display
+  const formatDate = (dateString: string | null | undefined): string => {
+    if (!dateString) return "Not set"
+    try {
+      return new Date(dateString).toLocaleString()
+    } catch (error) {
+      return "Invalid date"
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="container mx-auto py-6">
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2">Loading ticket details...</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !ticket) {
+    return (
+      <div className="container mx-auto py-6">
+        <div className="mb-6">
+          <Link href="/technician/dashboard">
+            <Button variant="ghost" className="pl-0">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to tickets
+            </Button>
+          </Link>
+        </div>
+
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error || "Failed to load ticket details. Please try again later."}</AlertDescription>
+        </Alert>
+      </div>
+    )
   }
 
   return (
@@ -144,10 +441,15 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Ticket #{ticket.id}</CardTitle>
+              <CardTitle>Ticket #{ticket.CodTicket}</CardTitle>
               <div className="flex items-center gap-4">
-                <Badge className={getPriorityColor(ticket.priority)}>{ticket.priority}</Badge>
-                <Badge className={getStatusColor(ticket.status)}>{ticket.status}</Badge>
+                <Badge className={getPriorityColor(ticket.Priority)}>{ticket.Priority}</Badge>
+                <Badge className={getStatusColor(ticket.Status)}>
+                  <span className="flex items-center gap-1">
+                    {getStatusIcon(ticket.Status)}
+                    {getStatusText(ticket.Status)}
+                  </span>
+                </Badge>
                 <Dialog open={isStatusDialogOpen} onOpenChange={setIsStatusDialogOpen}>
                   <DialogTrigger asChild>
                     <Button variant="outline">Change Status</Button>
@@ -155,26 +457,31 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>Update Ticket Status</DialogTitle>
-                      <DialogDescription>Change the status of ticket #{ticket.id}</DialogDescription>
+                      <DialogDescription>Change the status of ticket #{ticket.CodTicket}</DialogDescription>
                     </DialogHeader>
+                    {error && (
+                      <Alert variant="destructive" className="mt-2">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>{error}</AlertDescription>
+                      </Alert>
+                    )}
                     <div className="py-4 space-y-4">
                       <div className="space-y-2">
                         <label className="text-sm font-medium">Current Status</label>
-                        <div className="px-3 py-2 border rounded-md bg-muted">{ticket.status}</div>
+                        <div className="px-3 py-2 border rounded-md bg-muted">{getStatusText(ticket.Status)}</div>
                       </div>
 
                       <div className="space-y-2">
                         <label className="text-sm font-medium">New Status</label>
-                        <Select value={newStatus} onValueChange={setNewStatus}>
+                        <Select value={newStatus.toString()} onValueChange={(value) => setNewStatus(Number(value))}>
                           <SelectTrigger>
                             <SelectValue placeholder="Select new status" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Open">Open</SelectItem>
-                            <SelectItem value="In Progress">In Progress</SelectItem>
-                            <SelectItem value="Pending">Pending</SelectItem>
-                            <SelectItem value="Resolved">Resolved</SelectItem>
-                            <SelectItem value="Closed">Closed</SelectItem>
+                            <SelectItem value="1">New</SelectItem>
+                            <SelectItem value="2">Assigned</SelectItem>
+                            <SelectItem value="3">In Progress</SelectItem>
+                            <SelectItem value="4">Completed</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -219,37 +526,180 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4">
+            <div className="grid gap-6">
               <div>
-                <h3 className="font-semibold">{ticket.title}</h3>
-                <p className="text-sm text-muted-foreground">{ticket.description}</p>
+                <h3 className="text-lg font-semibold">{ticket.Title}</h3>
+                <p className="text-sm text-muted-foreground mt-2">{ticket.Description}</p>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm font-medium">Account</p>
-                  <p className="text-sm text-muted-foreground">{ticket.account}</p>
+                  <p className="text-sm font-medium">Client</p>
+                  <p className="text-sm text-muted-foreground">
+                    {ticket.ClientName || `Client ID: ${ticket.ClientID}`}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium">Contract</p>
-                  <p className="text-sm text-muted-foreground">{ticket.contract}</p>
+                  <p className="text-sm font-medium">Type</p>
+                  <p className="text-sm text-muted-foreground">{ticket.Type}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium">Owner</p>
-                  <p className="text-sm text-muted-foreground">{ticket.owner}</p>
+                  <p className="text-sm font-medium">Created By</p>
+                  <p className="text-sm text-muted-foreground">
+                    {ticket.CreatedByName || `User ID: ${ticket.CreatedBy}`}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium">Assignee</p>
-                  <p className="text-sm text-muted-foreground">{ticket.assignee}</p>
+                  <p className="text-sm font-medium">Assigned To</p>
+                  <p className="text-sm text-muted-foreground">{ticket.AssignedUserName || "Unassigned"}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium">Open Date</p>
-                  <p className="text-sm text-muted-foreground">{ticket.openDate}</p>
+                  <p className="text-sm font-medium">Created Date</p>
+                  <p className="text-sm text-muted-foreground">{formatDate(ticket.CreatedDatatime)}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium">Due Date</p>
-                  <p className="text-sm text-muted-foreground">{ticket.dueDate}</p>
+                  <p className="text-sm font-medium">Last Modified</p>
+                  <p className="text-sm text-muted-foreground">{formatDate(ticket.ModDatetime) || "Not modified"}</p>
                 </div>
+                <div>
+                  <p className="text-sm font-medium">Availability</p>
+                  <p className="text-sm text-muted-foreground">{formatDate(ticket.Availability)}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Contact Method</p>
+                  <p className="text-sm text-muted-foreground">{ticket.ContactMethod}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Location</p>
+                  <p className="text-sm text-muted-foreground">{ticket.Location || "Not specified"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Affected Product</p>
+                  <p className="text-sm text-muted-foreground">Product ID: {ticket.AffectedProduct}</p>
+                </div>
+                {ticket.IssueType && (
+                  <div>
+                    <p className="text-sm font-medium">Issue Type</p>
+                    <p className="text-sm text-muted-foreground">{ticket.IssueType}</p>
+                  </div>
+                )}
+                {ticket.SubIssueType && (
+                  <div>
+                    <p className="text-sm font-medium">Sub-Issue Type</p>
+                    <p className="text-sm text-muted-foreground">{ticket.SubIssueType}</p>
+                  </div>
+                )}
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Hardware/Software Change</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {/* Hardware/Software Change Checkbox */}
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="hw-sw-change"
+                  checked={requiresChange}
+                  onCheckedChange={(checked) => {
+                    setRequiresChange(checked === true)
+                  }}
+                />
+                <label
+                  htmlFor="hw-sw-change"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  This ticket requires hardware or software change
+                </label>
+              </div>
+
+              {/* Assignment Options - Only show if checkbox is checked */}
+              {requiresChange && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Assign to</Label>
+                    <RadioGroup
+                      value={assignType}
+                      onValueChange={(value) => {
+                        setAssignType(value)
+                        setAssignedTo("") // Reset selection when changing type
+                      }}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="technician" id="technician" />
+                        <Label htmlFor="technician">Hardware Technician</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="vendor" id="vendor" />
+                        <Label htmlFor="vendor">Vendor</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  {/* Technician Selection */}
+                  {assignType === "technician" && (
+                    <div className="space-y-2">
+                      <Label>Select Technician</Label>
+                      <Select value={assignedTo} onValueChange={setAssignedTo}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a technician" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="tech1">John Smith (Hardware)</SelectItem>
+                          <SelectItem value="tech2">Maria Garcia (Hardware)</SelectItem>
+                          <SelectItem value="tech3">David Johnson (Hardware)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {/* Vendor Selection */}
+                  {assignType === "vendor" && (
+                    <div className="space-y-2">
+                      <Label>Select Vendor</Label>
+                      <Select value={assignedTo} onValueChange={setAssignedTo}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a vendor" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="vendor1">TechSupply Inc.</SelectItem>
+                          <SelectItem value="vendor2">Hardware Solutions Ltd.</SelectItem>
+                          <SelectItem value="vendor3">IT Equipment Partners</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {/* Shared Status */}
+                  {assignedTo && (
+                    <Alert className="bg-blue-50 text-blue-800 border-blue-200">
+                      <Info className="h-4 w-4" />
+                      <AlertTitle>Ticket Will Be Shared</AlertTitle>
+                      <AlertDescription>
+                        This ticket will be shared with {assignType === "technician" ? "technician" : "vendor"}:{" "}
+                        {assignType === "technician"
+                          ? {
+                              tech1: "John Smith",
+                              tech2: "Maria Garcia",
+                              tech3: "David Johnson",
+                            }[assignedTo] || assignedTo
+                          : {
+                              vendor1: "TechSupply Inc.",
+                              vendor2: "Hardware Solutions Ltd.",
+                              vendor3: "IT Equipment Partners",
+                            }[assignedTo] || assignedTo}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {/* Save Button */}
+                  <Button onClick={handleHardwareChange}>Save Changes</Button>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -261,20 +711,36 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
           <CardContent>
             <div className="space-y-4">
               <div className="space-y-4">
-                {notes.map((note) => (
-                  <div key={note.id} className="rounded-lg border p-4">
-                    <p className="text-sm">{note.text}</p>
-                    <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>{note.createdBy}</span>
-                      <span>•</span>
-                      <span>{note.createdAt}</span>
+                {notes.length > 0 ? (
+                  notes.map((note) => (
+                    <div key={note.id} className="rounded-lg border p-4">
+                      <p className="text-sm">{note.text}</p>
+                      <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>{note.createdBy}</span>
+                        <span>•</span>
+                        <span>{note.createdAt}</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-muted-foreground">No notes available for this ticket.</p>
+                )}
               </div>
+
+              <Separator />
+
               <div className="space-y-2">
-                <Textarea placeholder="Add a note..." value={newNote} onChange={(e) => setNewNote(e.target.value)} />
-                <Button onClick={handleAddNote}>Add Note</Button>
+                <Label htmlFor="new-note">Add a note</Label>
+                <Textarea
+                  id="new-note"
+                  placeholder="Add a note..."
+                  value={newNote}
+                  onChange={(e) => setNewNote(e.target.value)}
+                />
+                <Button onClick={handleAddNote} disabled={!newNote.trim() || submittingNote}>
+                  {submittingNote && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Add Note
+                </Button>
               </div>
             </div>
           </CardContent>
