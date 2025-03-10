@@ -4,37 +4,57 @@ import { useQueueTickets } from "@/hooks/useQueueTickets"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { AlertTriangle, Clock, CheckCircle, Loader2 } from "lucide-react"
+import { AlertTriangle, Clock, CheckCircle, Loader2, XCircle } from "lucide-react"
 import Link from "next/link"
 import { format } from "date-fns"
+import { useTicketStatuses } from "@/hooks/useTicketStatuses"
 
 export default function TechnicianDashboardPage() {
   const { tickets, loading, error } = useQueueTickets()
+  const { getStatusDescription } = useTicketStatuses()
 
   // Function to get status text and color
   const getStatusInfo = (status: number) => {
     switch (status) {
       case 1:
         return {
-          text: "Open",
+          text: getStatusDescription(status),
           color: "bg-blue-100 text-blue-800",
           icon: <AlertTriangle className="h-4 w-4" />,
         }
       case 2:
         return {
-          text: "In Progress",
-          color: "bg-yellow-100 text-yellow-800",
+          text: getStatusDescription(status),
+          color: "bg-amber-100 text-amber-800",
           icon: <Clock className="h-4 w-4" />,
         }
       case 3:
         return {
-          text: "Resolved",
+          text: getStatusDescription(status),
           color: "bg-green-100 text-green-800",
           icon: <CheckCircle className="h-4 w-4" />,
         }
+      case 4:
+        return {
+          text: getStatusDescription(status),
+          color: "bg-gray-100 text-gray-800",
+          icon: <CheckCircle className="h-4 w-4" />,
+        }
+      case 5:
+        return {
+          text: getStatusDescription(status),
+          color: "bg-purple-100 text-purple-800",
+          icon: <Clock className="h-4 w-4" />,
+        }
+      case 6:
+        return {
+          text: getStatusDescription(status),
+          color: "bg-red-100 text-red-800",
+          icon: <XCircle className="h-4 w-4" />,
+        }
       default:
         return {
-          text: "Unknown",
+          text: getStatusDescription(status) || "Unknown",
           color: "bg-gray-100 text-gray-800",
           icon: <AlertTriangle className="h-4 w-4" />,
         }

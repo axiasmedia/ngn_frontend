@@ -1,5 +1,5 @@
 import api from "@/services/api"
-import type { Incident, IncidentDetail, IncidentNote, CreateTicketPayload, QueueTicket } from "./types"
+import type { Incident, IncidentDetail, IncidentNote, CreateTicketPayload, QueueTicket, TicketStatus } from "./types"
 
 // Function to map status codes to status strings
 const getStatusString = (status: number): string => {
@@ -292,12 +292,21 @@ export const incidentsService = {
   /**
    * Update incident status
    */
-  updateStatus: async (incidentId: string, status: string, note: string): Promise<void> => {
-    // In a real app, this would be an API call
-    // await api.patch(`/incidents/${incidentId}/status`, { status, note })
+  updateStatus: async (incidentId: string, statusId: number, note: string): Promise<void> => {
+    try {
+      const payload = {
+        CodTicket: incidentId,
+        Status: statusId,
+        Comments: note,
+        CreatedByAgent: 55, // Using a default agent ID, in a real app this would come from the logged-in user
+      }
 
-    // Mock implementation - no action needed for mock
-    console.log(`Updated incident ${incidentId} status to ${status} with note: ${note}`)
+      await api.put("/ticket/update", payload)
+      console.log(`Updated incident ${incidentId} status to ${statusId} with note: ${note}`)
+    } catch (error) {
+      console.error("Error updating ticket status:", error)
+      throw error
+    }
   },
 
   createTicket: async (ticket: CreateTicketPayload, files?: File[]): Promise<void> => {
@@ -350,6 +359,8 @@ export const incidentsService = {
     ]
   },
 
+  // Update the getTicketStatuses function to handle different API response formats
+
   /**
    * Get all tickets in the queue
    */
@@ -363,74 +374,85 @@ export const incidentsService = {
     }
   },
 
-  // Update the updateTicketStatus function to properly handle the status IDs from IDStatusT table
-  updateTicketStatus: async (codTicket: string, status: number, comments: string, agentId = 55): Promise<boolean> => {
+  /**
+   * Get all available ticket statuses
+   */
+  getTicketStatuses: async (): Promise<TicketStatus[]> => {
     try {
-      // First, verify that the status ID exists in the IDStatusT table
-      const statusCheckResponse = await api.get(`/ticket/status/${status}`)
+      const response = await api.get<any[]>("/ticket/status")
 
-      // If status doesn't exist, throw an error
-      if (!statusCheckResponse.data || statusCheckResponse.data.length === 0) {
-        throw new Error(`Invalid status ID: ${status}. Status does not exist in the system.`)
+      // Log the raw response to understand the structure
+      console.log("Raw ticket status response:", response.data)
+
+      // Check if we have data and it's an array
+      if (response.data && Array.isArray(response.data)) {
+        // Try to map the response to our expected format
+        return response.data.map((item, index) => {
+          // Handle different possible structures
+          if (typeof item === "object" && item !== null) {
+            // Try to find ID and Description fields with various possible names
+            const id =
+              item.IDStatus !== undefined
+                ? item.IDStatus
+                : item.id !== undefined
+                  ? item.id
+                  : item.ID !== undefined
+                    ? item.ID
+                    : index + 1
+
+            const description =
+              item.Description !== undefined
+                ? item.Description
+                : item.description !== undefined
+                  ? item.description
+                  : item.name !== undefined
+                    ? item.name
+                    : `Status ${index + 1}`
+
+            return {
+              IDStatus: id,
+              Description: description,
+            }
+          }
+
+          // If item is not an object, create a default status
+          return {
+            IDStatus: index + 1,
+            Description: `Status ${index + 1}`,
+          }
+        })
       }
 
-      // If status exists, proceed with the update
-      const response = await api.put("/ticket/update", {
-        CodTicket: codTicket,
-        Status: status,
-        Comments: comments,
-        CreatedByAgent: agentId,
-      })
-
-      return response.data.message === "Ticket actualizado"
-    } catch (error) {
-      console.error("Error updating ticket status:", error)
-      throw error
-    }
-  },
-
-  // Add a new function to get ticket update history from TicketUpdate table
-  getTicketUpdates: async (codTicket: string): Promise<any[]> => {
-    try {
-      const response = await api.get(`/ticket/updates/${codTicket}`)
-      return response.data || []
-    } catch (error) {
-      console.error("Error fetching ticket updates:", error)
-      return []
-    }
-  },
-
-  // Add a function to get status description from IDStatusT table
-  getStatusDescription: async (statusId: number): Promise<string> => {
-    try {
-      const response = await api.get(`/ticket/status/${statusId}`)
-      if (response.data && response.data.length > 0) {
-        return response.data[0].Description
-      }
-      return "Unknown"
-    } catch (error) {
-      console.error("Error fetching status description:", error)
-      return "Unknown"
-    }
-  },
-
-  // Add a function to get all valid statuses from IDStatusT table
-  getValidStatuses: async (): Promise<{ id: number; description: string }[]> => {
-    try {
-      const response = await api.get("/ticket/status")
-      return response.data.map((status: any) => ({
-        id: status.ID,
-        description: status.Description,
-      }))
-    } catch (error) {
-      console.error("Error fetching valid statuses:", error)
-      // Fallback to the statuses we saw in the screenshot
+      // Fallback to mock data if response is not as expected
+      console.warn("Unexpected response format from ticket status API, using fallback data")
       return [
-        { id: 1, description: "New" },
-        { id: 2, description: "Assigned" },
-        { id: 3, description: "In Progress" },
-        { id: 4, description: "Completed" },
+        { IDStatus: 1, Description: "Open" },
+        { IDStatus: 2, Description: "In Progress" },
+        { IDStatus: 3, Description: "Resolved" },
+        { IDStatus: 4, Description: "Closed" },
       ]
+    } catch (error) {
+      console.error("Error fetching ticket statuses:", error)
+      // Fallback to mock data if API fails
+      return [
+        { IDStatus: 1, Description: "Open" },
+        { IDStatus: 2, Description: "In Progress" },
+        { IDStatus: 3, Description: "Resolved" },
+        { IDStatus: 4, Description: "Closed" },
+      ]
+    }
+  },
+
+  /**
+   * Get ticket details by ticket code
+   */
+  getTicketByCode: async (codTicket: string): Promise<any> => {
+    try {
+      const response = await api.get(`/ticket/by-ticket/${codTicket}`)
+      return response.data
+    } catch (error) {
+      console.error("Error fetching ticket details:", error)
+      throw error
     }
   },
 }

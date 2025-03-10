@@ -25,6 +25,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
 import api from "@/services/api"
 import { userService } from "@/services/user/user.service"
+import { useTicketStatuses } from "@/hooks/useTicketStatuses"
 import { incidentsService } from "@/services/incidents/incidents.service"
 
 interface Note {
@@ -84,6 +85,8 @@ export default function TicketDetailPage() {
   const [assignedTo, setAssignedTo] = useState<string>("")
   const [submittingNote, setSubmittingNote] = useState(false)
 
+  const { statuses, getStatusDescription } = useTicketStatuses()
+
   useEffect(() => {
     const fetchTicket = async () => {
       try {
@@ -122,64 +125,16 @@ export default function TicketDetailPage() {
               ...ticketData,
               CreatedByName: creatorName,
               AssignedUserName: assigneeName,
+              notes: ticketData.notes || [],
             }
 
             setTicket(enrichedTicket)
+            setNotes(enrichedTicket.notes || [])
             setNewStatus(enrichedTicket.Status)
             setRequiresChange(!!enrichedTicket.NeedHardware)
 
-            // Fetch ticket updates from TicketUpdate table
-            try {
-              const ticketUpdates = await incidentsService.getTicketUpdates(codTicket)
-
-              if (ticketUpdates && ticketUpdates.length > 0) {
-                // Convert ticket updates to notes format
-                const updateNotes = await Promise.all(
-                  ticketUpdates.map(async (update: any) => {
-                    // Get the status description for this update
-                    let statusDescription = "Unknown"
-                    try {
-                      statusDescription = await incidentsService.getStatusDescription(update.Status)
-                    } catch (err) {
-                      console.error("Error fetching status description:", err)
-                    }
-
-                    // Get the agent name who made the update
-                    let agentName = `Agent ID: ${update.CreatedByAgent}`
-                    if (update.CreatedByAgent) {
-                      try {
-                        agentName = await userService.getUserName(update.CreatedByAgent)
-                      } catch (err) {
-                        console.error("Error fetching agent name:", err)
-                      }
-                    }
-
-                    return {
-                      id: update.IDAuton.toString(),
-                      text:
-                        update.Status === 1 ? "Ticket created" : `${update.Comments} (Status: ${statusDescription})`,
-                      createdAt: formatDate(update.CreatedDatetime),
-                      createdBy: update.CreatedByAgent === 0 ? "System" : agentName,
-                    }
-                  }),
-                )
-
-                setNotes(updateNotes)
-              } else {
-                // If no updates found, create an initial note
-                const initialNotes = [
-                  {
-                    id: "1",
-                    text: "Ticket created in the system.",
-                    createdAt: new Date(enrichedTicket.CreatedDatatime).toLocaleString(),
-                    createdBy: creatorName,
-                  },
-                ]
-                setNotes(initialNotes)
-              }
-            } catch (updateErr) {
-              console.error("Error fetching ticket updates:", updateErr)
-              // Fallback to initial note
+            // Initialize mock notes if none exist
+            if (!enrichedTicket.notes || enrichedTicket.notes.length === 0) {
               const initialNotes = [
                 {
                   id: "1",
@@ -232,6 +187,29 @@ export default function TicketDetailPage() {
     }
   }
 
+  const getStatusText = (status: number): string => {
+    // First try to get the status from our fetched statuses
+    const statusDescription = getStatusDescription(status)
+    if (statusDescription !== "Unknown") {
+      return statusDescription
+    }
+
+    // Fallback to the hardcoded mapping if needed
+    switch (status) {
+      case 1:
+        return "Open"
+      case 2:
+        return "In Progress"
+      case 3:
+        return "Resolved"
+      case 4:
+        return "Closed"
+      default:
+        return "Unknown"
+    }
+  }
+
+  // Update the handleStatusChange function to properly call the API with the correct status ID
   const handleStatusChange = async () => {
     if (!statusNote.trim()) {
       setStatusError(true)
@@ -239,45 +217,30 @@ export default function TicketDetailPage() {
     }
 
     try {
-      // Use the service to update the ticket status
-      const success = await incidentsService.updateTicketStatus(ticket.CodTicket, newStatus, statusNote)
+      // Call the API to update the status
+      await incidentsService.updateStatus(codTicket, newStatus, statusNote)
 
-      if (success) {
-        // Get the status description for the new status
-        let statusDescription = getStatusText(newStatus)
-        try {
-          statusDescription = await incidentsService.getStatusDescription(newStatus)
-        } catch (err) {
-          console.error("Error fetching status description:", err)
-        }
-
-        // Add the status change note
-        const statusChangeNote = {
-          id: Date.now().toString(),
-          text: `Status changed from "${getStatusText(ticket?.Status || 1)}" to "${statusDescription}": ${statusNote}`,
-          createdAt: new Date().toLocaleString(),
-          createdBy: "Tech Support Team",
-        }
-
-        // Update ticket status and add the note
-        setTicket({ ...ticket, Status: newStatus })
-        setNotes([...notes, statusChangeNote])
-
-        // Reset form
-        setStatusNote("")
-        setStatusError(false)
-        setIsStatusDialogOpen(false)
-      } else {
-        throw new Error("Failed to update ticket status")
+      // Add the status change note
+      const statusChangeNote = {
+        id: Date.now().toString(),
+        text: `Status changed from "${getStatusText(ticket?.Status || 1)}" to "${getStatusText(newStatus)}": ${statusNote}`,
+        createdAt: new Date().toLocaleString(),
+        createdBy: "Tech Support Team",
       }
+
+      // Update ticket status and add the note
+      if (ticket) {
+        setTicket({ ...ticket, Status: newStatus })
+      }
+      setNotes([...notes, statusChangeNote])
+
+      // Reset form
+      setStatusNote("")
+      setStatusError(false)
+      setIsStatusDialogOpen(false)
     } catch (err) {
       console.error("Failed to update status:", err)
-      // Show specific error message if it's a status validation error
-      if (err instanceof Error && err.message.includes("Invalid status ID")) {
-        setError(`${err.message} Please select a valid status.`)
-      } else {
-        setError("Failed to update ticket status. Please try again.")
-      }
+      // You could add error handling here, like showing an error message
     }
   }
 
@@ -329,20 +292,6 @@ export default function TicketDetailPage() {
   }
 
   // Helper functions for status and priority display
-  const getStatusText = (status: number): string => {
-    switch (status) {
-      case 1:
-        return "Open"
-      case 2:
-        return "In Progress"
-      case 3:
-        return "Resolved"
-      case 4:
-        return "Closed"
-      default:
-        return "Unknown"
-    }
-  }
 
   const getStatusColor = (status: number): string => {
     switch (status) {
@@ -459,12 +408,6 @@ export default function TicketDetailPage() {
                       <DialogTitle>Update Ticket Status</DialogTitle>
                       <DialogDescription>Change the status of ticket #{ticket.CodTicket}</DialogDescription>
                     </DialogHeader>
-                    {error && (
-                      <Alert variant="destructive" className="mt-2">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription>{error}</AlertDescription>
-                      </Alert>
-                    )}
                     <div className="py-4 space-y-4">
                       <div className="space-y-2">
                         <label className="text-sm font-medium">Current Status</label>
@@ -478,10 +421,24 @@ export default function TicketDetailPage() {
                             <SelectValue placeholder="Select new status" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="1">New</SelectItem>
-                            <SelectItem value="2">Assigned</SelectItem>
-                            <SelectItem value="3">In Progress</SelectItem>
-                            <SelectItem value="4">Completed</SelectItem>
+                            {statuses.length > 0 ? (
+                              statuses.map((status) => (
+                                <SelectItem
+                                  key={typeof status.IDStatus !== "undefined" ? status.IDStatus : Math.random()}
+                                  value={typeof status.IDStatus !== "undefined" ? status.IDStatus.toString() : "0"}
+                                >
+                                  {status.Description || "Unknown Status"}
+                                </SelectItem>
+                              ))
+                            ) : (
+                              // Fallback options if statuses haven't loaded
+                              <>
+                                <SelectItem value="1">Open</SelectItem>
+                                <SelectItem value="2">In Progress</SelectItem>
+                                <SelectItem value="3">Resolved</SelectItem>
+                                <SelectItem value="4">Closed</SelectItem>
+                              </>
+                            )}
                           </SelectContent>
                         </Select>
                       </div>
