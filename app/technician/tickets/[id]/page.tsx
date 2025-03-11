@@ -28,6 +28,7 @@ import { userService } from "@/services/user/user.service"
 import { useTicketStatuses } from "@/hooks/useTicketStatuses"
 import { incidentsService } from "@/services/incidents/incidents.service"
 import { useTicketUpdates } from "@/hooks/useTicketUpdates"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 interface Note {
   id: string
@@ -659,7 +660,7 @@ export default function TicketDetailPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="space-y-4">
+            <ScrollArea className="h-[300px] pr-4">
                 {notes.length > 0 ? (
                   notes.map((note) => (
                     <div key={note.id} className="rounded-lg border p-4">
@@ -674,7 +675,7 @@ export default function TicketDetailPage() {
                 ) : (
                   <p className="text-muted-foreground">No notes available for this ticket.</p>
                 )}
-              </div>
+              </ScrollArea>
 
               <Separator />
 
