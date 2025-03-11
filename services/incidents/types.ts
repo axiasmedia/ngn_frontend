@@ -42,6 +42,17 @@ export function getStatusString(status: number): { label: string; value: number 
   }
 }
 
+// Added a new interface for ticket updates
+export interface TicketUpdate {
+  IDAuton: number
+  CodTicket: string
+  Comments: string
+  Status: number
+  CreatedByAgent: number
+  CreatedDatetime: string
+  CodVendor: string | null
+}
+
 export interface IncidentDetail {
   id: string
   title: string
@@ -61,6 +72,7 @@ export interface IncidentDetail {
   notes: IncidentNote[]
   createdAt: string
   updatedAt: string
+  updates?: TicketUpdate[]
 }
 
 export interface IncidentNote {
