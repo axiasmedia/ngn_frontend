@@ -49,7 +49,7 @@ export interface TicketUpdate {
   Comments: string
   Status: number
   CreatedByAgent: number
-  CreatedDatetime: string
+  CreatedDatatime: string
   CodVendor: string | null
 }
 
@@ -148,7 +148,7 @@ export interface TicketDetail {
   Comments: string
   Status: number
   CreatedByAgent: number
-  CreatedDatetime: string
+  CreatedDatatime: string
   CodVendor: string | null
   notes?: TicketNote[]
   createdByName?: string

@@ -456,27 +456,65 @@ export const incidentsService = {
    * Convert ticket updates to notes format
    */
   convertUpdatesToNotes: async (updates: TicketUpdate[]): Promise<IncidentNote[]> => {
+    console.log("Processing updates:", updates)
     const notes: IncidentNote[] = []
+
+    // Get all status descriptions for mapping
+    let statusMap: Record<number, string> = {}
+    try {
+      const statuses = await incidentsService.getTicketStatuses()
+      statusMap = statuses.reduce(
+        (map, status) => {
+          map[status.IDStatus] = status.Description
+          return map
+        },
+        {} as Record<number, string>,
+      )
+    } catch (error) {
+      console.error("Error fetching status descriptions:", error)
+      // Fallback status map
+      statusMap = {
+        1: "Open",
+        2: "In Progress",
+        3: "Resolved",
+        4: "Closed",
+        5: "Pending",
+        6: "Cancelled",
+      }
+    }
 
     for (const update of updates) {
       try {
         // Get the agent name who created the update
-        const agentName = await getUserNameById(update.CreatedByAgent)
-
+        let agentName = "Tech Support Team"
+        if (update.CreatedByAgent) {
+          try {
+            agentName = await getUserNameById(update.CreatedByAgent)
+          } catch (err) {
+            console.warn(`Could not get name for agent ${update.CreatedByAgent}:`, err)
+          }
+        }
         // Format the note text based on the update type
-        let noteText = update.Comments
+        let noteText = update.Comments || ""
 
-        // If it's a status change, add the status information
-        if (update.Status) {
-          const statusDescription = getStatusString(update.Status)
-          noteText += ` (Status: ${statusDescription})`
+        // If it's a status change and not already formatted as such
+        if (update.Status && !noteText.toLowerCase().includes("status changed")) {
+          const statusDescription = statusMap[update.Status] || `Status ${update.Status}`
+
+          // For ticket creation, use a simpler format
+          if (noteText.toLowerCase().includes("ticket created")) {
+            noteText = `${noteText} (Status: ${statusDescription})`
+          } else {
+            // For status updates, use a more descriptive format
+            noteText = `Status changed to "${statusDescription}": ${noteText}`
+          }
         }
 
         notes.push({
           id: update.IDAuton.toString(),
           text: noteText,
-          createdAt: formatDateSafely(update.CreatedDatetime),
-          createdBy: agentName || `Agent ${update.CreatedByAgent}`,
+          createdAt: formatDateSafely(update.CreatedDatatime),
+          createdBy: agentName || "System",
         })
       } catch (error) {
         console.error("Error converting update to note:", error)
@@ -486,4 +524,3 @@ export const incidentsService = {
     return notes
   },
 }
-
