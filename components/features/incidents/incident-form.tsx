@@ -16,6 +16,7 @@ import { AlertCircle } from "lucide-react"
 import { MultiUserSelect } from "./multi-user-select"
 import { DateTimePicker } from "@/components/ui/date-picker"
 import { useAuth } from "@/components/auth/auth-provider"
+import { useUsers } from "@/hooks/useUsers"
 
 export function IncidentForm() {
   const { isSubmitting, error, handleSubmit, handleFileChange } = useIncidentForm()
@@ -24,7 +25,8 @@ export function IncidentForm() {
   const [availabilityDate, setAvailabilityDate] = useState<Date | undefined>(undefined)
   const [contactMethod, setContactMethod] = useState<string>("")
   const { userInfo } = useAuth() // Get user info from auth context
-
+  const { users, loading: loadingUsers } = useUsers("User")
+  
   // Update contact method when it changes
   const handleContactMethodChange = (value: string) => {
     setContactMethod(value)
@@ -120,13 +122,10 @@ export function IncidentForm() {
               </div>
             ) : (
               <MultiUserSelect
-                users={[
-                  { id: 45, name: "John Doe" },
-                  { id: 46, name: "Jane Smith" },
-                  { id: 47, name: "Bob Wilson" },
-                ]}
+              users={users.map((user) => ({ id: user.id, name: user.name }))}
                 selectedUsers={selectedUsers}
                 onUserSelect={setSelectedUsers}
+                isLoading={loadingUsers}
               />
             )}
           </div>
