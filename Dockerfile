@@ -1,35 +1,37 @@
-# --- Etapa 1: Construir el proyecto ---
-    FROM node:20-alpine AS builder
+FROM node:18-alpine AS base
 
-    WORKDIR /app
-    
-    # Copia archivos de dependencias y configuración
-    COPY package.json package-lock.json* ./
-    COPY next.config.mjs ./
-    
-    # Instala dependencias
-    RUN npm ci
-    
-    # Copia todo el proyecto
-    COPY . .
-    
-    # Genera el build estático
-    RUN npm run build
-    
-    # --- Etapa 2: Servir el build estático con Node.js ---
-    FROM node:20-alpine
-    
-    WORKDIR /app
-    
-    # Copia SOLO lo necesario desde la etapa de builder
-    COPY --from=builder /app/out ./out
-    COPY --from=builder /app/public ./public
-    COPY --from=builder /app/package.json ./
-    
-    # Instala un servidor estático ligero (opcional, pero recomendado)
-    RUN npm install -g serve
-    
-    EXPOSE 3000
-    
-    # Comando para servir el build estático
-    CMD ["serve", "-s", "out", "-l", "3000"]
+FROM base AS deps
+
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+RUN npm run build
+
+FROM base AS runner
+WORKDIR /app 
+ENV NODE_ENV production
+
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+COPY --from=builder /app/public ./public 
+
+RUN mkdir .next
+RUN chown nextjs:nodejs .next
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
+
+EXPOSE 3000
+
+ENV PORT 3000
+
+CMD HOSTNAME="0.0.0.0" node server.js
