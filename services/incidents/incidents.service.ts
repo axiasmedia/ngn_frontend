@@ -16,7 +16,20 @@ const getStatusString = (status: number): string => {
       return "Unknown"
   }
 }
-
+// Helper function to safely format dates
+const formatDateSafely = (dateString: string | null | undefined): string => {
+  if (!dateString) return "Not set"
+  try {
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) {
+      return "Date not available"
+    }
+    return date.toLocaleString()
+  } catch (error) {
+    console.error("Error formatting date:", error)
+    return "Date not available"
+  }
+}
 // Remove the hardcoded getUserNameById function and replace it with a real API call
 // Helper function to get user name from API
 const getUserNameById = async (userId: number | string | null | undefined): Promise<string> => {
@@ -63,21 +76,6 @@ export const incidentsService = {
           const ticketData = response.data.find((ticket: any) => ticket.CodTicket === codTicket)
 
           if (ticketData) {
-            // Helper function to safely format dates
-            const formatDateSafely = (dateString: string | null | undefined) => {
-              if (!dateString) return "Not set"
-              try {
-                const date = new Date(dateString)
-                if (isNaN(date.getTime())) {
-                  return "Date not available"
-                }
-                return date.toLocaleString()
-              } catch (error) {
-                console.error("Error formatting date:", error)
-                return "Date not available"
-              }
-            }
-
             // Get the creator's name from the API
             const creatorName = await getUserNameById(ticketData.CreatedBy)
             const assigneeName = ticketData.AssignedToUser
@@ -117,22 +115,6 @@ export const incidentsService = {
 
         if (response.data) {
           const ticketData = response.data
-
-          // Helper function to safely format dates
-          const formatDateSafely = (dateString: string | null | undefined) => {
-            if (!dateString) return "Not set"
-            try {
-              const date = new Date(dateString)
-              if (isNaN(date.getTime())) {
-                return "Date not available"
-              }
-              return date.toLocaleString()
-            } catch (error) {
-              console.error("Error formatting date:", error)
-              return "Date not available"
-            }
-          }
-
           // Get the creator's name from the API
           const creatorName = await getUserNameById(ticketData.CreatedBy)
           const assigneeName = ticketData.AssignedToUser
@@ -493,7 +475,7 @@ export const incidentsService = {
         notes.push({
           id: update.IDAuton.toString(),
           text: noteText,
-          createdAt: new Date(update.CreatedDatetime).toLocaleString(),
+          createdAt: formatDateSafely(update.CreatedDatetime),
           createdBy: agentName || `Agent ${update.CreatedByAgent}`,
         })
       } catch (error) {
