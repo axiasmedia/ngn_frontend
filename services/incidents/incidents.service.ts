@@ -523,4 +523,38 @@ export const incidentsService = {
 
     return notes
   },
+
+  /**
+   * Assign a technician to a ticket
+   */
+  assignTechnician: async (codTicket: string, technicianId: number): Promise<void> => {
+    try {
+      const payload = {
+        CodTicket: codTicket,
+        AssignedTo: technicianId,
+      }
+
+      await api.put("/ticket/assign", payload)
+      console.log(`Assigned technician ${technicianId} to ticket ${codTicket}`)
+    } catch (error) {
+      console.error("Error assigning technician:", error)
+      throw error
+    }
+  },
+
+  // Add getTechnicians function to fetch available technicians
+  getTechnicians: async (): Promise<{ id: number; name: string }[]> => {
+    try {
+      // In a real implementation, this would fetch from your technicians API endpoint
+      // For now, returning mock data
+      return [
+        { id: 55, name: "John Smith" },
+        { id: 56, name: "Maria Garcia" },
+        { id: 57, name: "David Johnson" },
+      ]
+    } catch (error) {
+      console.error("Error fetching technicians:", error)
+      throw error
+    }
+  },
 }
