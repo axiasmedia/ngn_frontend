@@ -15,6 +15,7 @@ import api from "@/services/api"
 import { useAuth } from "@/components/auth/auth-provider"
 import { useTicketStatuses } from "@/hooks/useTicketStatuses"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { useTicketUpdates } from "@/hooks/useTicketUpdates"
 
 export default function IncidentDetailsPage() {
   const params = useParams()
@@ -27,8 +28,16 @@ export default function IncidentDetailsPage() {
   const [error, setError] = useState<string | null>(null)
   const [newNote, setNewNote] = useState("")
   const [submittingNote, setSubmittingNote] = useState(false)
-
+  const [notes, setNotes] = useState<any[]>([])
   const { getStatusDescription } = useTicketStatuses()
+
+  // Get ticket updates
+  const { notes: ticketNotes, loading: notesLoading } = useTicketUpdates(codTicket)
+
+  useEffect(() => {
+    // Set the notes in the state
+    setNotes(ticketNotes)
+  }, [ticketNotes])
 
   useEffect(() => {
     // Function to safely format date strings
@@ -337,9 +346,9 @@ export default function IncidentDetailsPage() {
           <CardContent>
             <div className="space-y-4">
               <ScrollArea className="h-[300px] pr-4">
-                {incident.notes && incident.notes.length > 0 ? (
+                {notes && notes.length > 0 ? (
                   <div className="space-y-4">
-                    {incident.notes.map((note: any) => (
+                   {notes.map((note: any) => (
                       <div key={note.id} className="rounded-lg border p-4 hover:shadow-sm transition-shadow">
                         <p className="text-sm">{note.text}</p>
                         <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
