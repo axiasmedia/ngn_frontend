@@ -2,23 +2,186 @@
 
 import type React from "react"
 
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { RichTextEditor } from "@/components/features/technician/rich-text-editor"
+import { DateTimePicker } from "@/components/ui/date-picker"
+import { Textarea } from "@/components/ui/textarea"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { AlertCircle } from "lucide-react"
+import { incidentsService } from "@/services/incidents/incidents.service"
+import { useAuth } from "@/components/auth/auth-provider"
+
+// Mock data for clients, products, etc.
+const MOCK_CLIENTS = [
+  { id: 4, name: "Chrysalis Health" },
+  { id: 5, name: "Medical Center" },
+  { id: 6, name: "Regional Hospital" },
+]
+
+const MOCK_PRODUCTS = [
+  { id: 1, name: "Email Service" },
+  { id: 2, name: "Laptop" },
+  { id: 3, name: "VPN Access" },
+  { id: 4, name: "Desktop Computer" },
+  { id: 5, name: "Mobile Device" },
+]
+
+const ISSUE_TYPES = [
+  { id: "hardware", name: "Hardware" },
+  { id: "software", name: "Software" },
+  { id: "network", name: "Network" },
+  { id: "access", name: "Access Rights" },
+  { id: "other", name: "Other" },
+]
+
+const SUB_ISSUE_TYPES = {
+  hardware: [
+    { id: "laptop", name: "Laptop" },
+    { id: "desktop", name: "Desktop" },
+    { id: "printer", name: "Printer" },
+    { id: "peripheral", name: "Peripheral" },
+  ],
+  software: [
+    { id: "os", name: "Operating System" },
+    { id: "application", name: "Application" },
+    { id: "update", name: "Updates/Patches" },
+  ],
+  network: [
+    { id: "connectivity", name: "Connectivity" },
+    { id: "vpn", name: "VPN" },
+    { id: "wifi", name: "WiFi" },
+  ],
+  access: [
+    { id: "account", name: "Account" },
+    { id: "permission", name: "Permission" },
+    { id: "password", name: "Password" },
+  ],
+  other: [
+    { id: "training", name: "Training" },
+    { id: "inquiry", name: "Inquiry" },
+  ],
+}
 
 export default function NewTicketPage() {
   const router = useRouter()
+  const { userInfo } = useAuth()
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  // Form state
+  const [title, setTitle] = useState("")
+  const [description, setDescription] = useState("")
+  const [priority, setPriority] = useState("Medium")
+  const [status, setStatus] = useState("1") // Default to "Open"
+  const [clientId, setClientId] = useState("")
+  const [affectedProduct, setAffectedProduct] = useState("")
+  const [issueType, setIssueType] = useState("")
+  const [subIssueType, setSubIssueType] = useState("")
+  const [location, setLocation] = useState("")
+  const [contactMethod, setContactMethod] = useState("")
+  const [availability, setAvailability] = useState<Date | undefined>(new Date())
+  const [needsHardware, setNeedsHardware] = useState(false)
+  const [assignedTo, setAssignedTo] = useState("")
+
+  // UI state
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [duration, setDuration] = useState(0)
+  const [technicians, setTechnicians] = useState<{ id: number; name: string }[]>([])
+
+  // Load technicians
+  useEffect(() => {
+    const loadTechnicians = async () => {
+      try {
+        const techs = await incidentsService.getTechnicians()
+        setTechnicians(techs)
+      } catch (err) {
+        console.error("Failed to load technicians:", err)
+      }
+    }
+
+    loadTechnicians()
+  }, [])
+
+  // Timer for duration
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setDuration((prev) => prev + 1)
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [])
+
+  // Format duration as HH:MM:SS
+  const formatDuration = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600)
+    const minutes = Math.floor((seconds % 3600) / 60)
+    const secs = seconds % 60
+
+    return [
+      hours.toString().padStart(2, "0"),
+      minutes.toString().padStart(2, "0"),
+      secs.toString().padStart(2, "0"),
+    ].join(":")
+  }
+
+  // Reset sub-issue type when issue type changes
+  useEffect(() => {
+    setSubIssueType("")
+  }, [issueType])
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    // In a real app, this would create a new ticket via API
-    router.push("/technician/dashboard")
+
+    if (!title || !description || !clientId || !affectedProduct || !priority) {
+      setError("Please fill in all required fields")
+      return
+    }
+
+    try {
+      setIsSubmitting(true)
+      setError(null)
+
+      const ticketData = {
+        Title: title,
+        Description: description,
+        ClientID: Number(clientId),
+        Status: Number(status),
+        Type: "TechnicianTicket", // Set type to TechnicianTicket
+        AffectedProduct: Number(affectedProduct),
+        Priority: priority,
+        CreatedBy: userInfo?.id || 55, // Default to a technician ID if userInfo is not available
+        ContactMethod: contactMethod || "support@chrysalishealth.org",
+        Location: location || null,
+        AssignedToUser: assignedTo ? Number(assignedTo) : null,
+        Availability: availability ? availability.toISOString() : new Date().toISOString(),
+        NeedHardware: needsHardware ? 1 : 0,
+        IssueType: issueType || null,
+        SubIssueType: subIssueType || null,
+        // Include affected users array (empty for technician tickets)
+        AffectedUsers: [],
+      }
+
+      console.log("Creating technician ticket:", ticketData)
+
+      // Get files from the form
+      const fileInput = e.currentTarget.querySelector('input[type="file"]') as HTMLInputElement
+      const files = fileInput?.files ? Array.from(fileInput.files) : []
+
+      await incidentsService.createTicket(ticketData, files)
+
+      router.push("/technician/dashboard")
+    } catch (err) {
+      console.error("Error creating ticket:", err)
+      setError("Failed to create ticket. Please try again.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -35,50 +198,97 @@ export default function NewTicketPage() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Create Ticket</h1>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Duration: 00:01:03</span>
-          <Button variant="outline">Cancel</Button>
+          <span className="text-sm text-muted-foreground">Duration: {formatDuration(duration)}</span>
+          <Button variant="outline" onClick={() => router.push("/technician/dashboard")}>
+            Cancel
+          </Button>
           <Button type="submit" form="ticket-form">
-            Create
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              "Create"
+            )}
           </Button>
         </div>
       </div>
+
+      {error && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       <form id="ticket-form" onSubmit={handleSubmit} className="space-y-6">
         <Card>
           <CardContent className="p-6">
             <div className="space-y-6">
+              {/* Client Selection */}
+              <div className="space-y-2">
+                <Label htmlFor="client">
+                  Client <span className="text-red-500">*</span>
+                </Label>
+                <Select value={clientId} onValueChange={setClientId} required>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select client" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MOCK_CLIENTS.map((client) => (
+                      <SelectItem key={client.id} value={client.id.toString()}>
+                        {client.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               {/* Title */}
               <div className="space-y-2">
-                <Label htmlFor="title">Title *</Label>
-                <Input id="title" placeholder="Add title" required />
+                <Label htmlFor="title">
+                  Title <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="title"
+                  placeholder="Add title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  required
+                />
               </div>
 
               {/* Priority and Status */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Priority *</Label>
-                  <Select>
+                  <Label>
+                    Priority <span className="text-red-500">*</span>
+                  </Label>
+                  <Select value={priority} onValueChange={setPriority}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select priority" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="high">High</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="High">High</SelectItem>
+                      <SelectItem value="Medium">Medium</SelectItem>
+                      <SelectItem value="Low">Low</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Status *</Label>
-                  <Select defaultValue="new">
+                  <Label>
+                    Status <span className="text-red-500">*</span>
+                  </Label>
+                  <Select value={status} onValueChange={setStatus}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="new">New</SelectItem>
-                      <SelectItem value="in-progress">In Progress</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="resolved">Resolved</SelectItem>
+                      <SelectItem value="1">Open</SelectItem>
+                      <SelectItem value="2">In Progress</SelectItem>
+                      <SelectItem value="5">Pending</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -86,8 +296,16 @@ export default function NewTicketPage() {
 
               {/* Description */}
               <div className="space-y-2">
-                <Label>Details *</Label>
-                <RichTextEditor />
+                <Label>
+                  Details <span className="text-red-500">*</span>
+                </Label>
+                <Textarea
+                  placeholder="Describe the issue in detail"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="min-h-[200px]"
+                  required
+                />
               </div>
             </div>
           </CardContent>
@@ -97,189 +315,116 @@ export default function NewTicketPage() {
           <CardContent className="p-6">
             <h2 className="text-lg font-semibold mb-4">Ticket Details</h2>
             <div className="space-y-6">
-              {/* Assignee and Queue */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Assignee *</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select assignee" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="team1">Tech Support Team</SelectItem>
-                      <SelectItem value="team2">Network Team</SelectItem>
-                      <SelectItem value="team3">Security Team</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Queue *</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select queue" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="general">General Support</SelectItem>
-                      <SelectItem value="hardware">Hardware Support</SelectItem>
-                      <SelectItem value="software">Software Support</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              {/* Assignee */}
+              <div className="space-y-2">
+                <Label>Assignee</Label>
+                <Select value={assignedTo} onValueChange={setAssignedTo}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select assignee (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">Unassigned</SelectItem>
+                    {technicians.map((tech) => (
+                      <SelectItem key={tech.id} value={tech.id.toString()}>
+                        {tech.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              {/* Secondary Assignees and CCs */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Secondary Assignees</Label>
-                  <Input placeholder="Select secondary assignees" />
-                </div>
-                <div className="space-y-2">
-                  <Label>CCs</Label>
-                  <Input placeholder="Select CCs" />
-                </div>
+              {/* Affected Product */}
+              <div className="space-y-2">
+                <Label>
+                  Affected Product <span className="text-red-500">*</span>
+                </Label>
+                <Select value={affectedProduct} onValueChange={setAffectedProduct} required>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select affected product" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MOCK_PRODUCTS.map((product) => (
+                      <SelectItem key={product.id} value={product.id.toString()}>
+                        {product.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              {/* Type and Work Type */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Type *</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="incident">Incident</SelectItem>
-                      <SelectItem value="request">Service Request</SelectItem>
-                      <SelectItem value="problem">Problem</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Work Type</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select work type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="break-fix">Break/Fix</SelectItem>
-                      <SelectItem value="maintenance">Maintenance</SelectItem>
-                      <SelectItem value="project">Project</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Issue Type and Sub-issue Type */}
+              {/* Issue Type and Sub-Issue Type */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Issue Type</Label>
-                  <Select>
+                  <Select value={issueType} onValueChange={setIssueType}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select issue type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="hardware">Hardware</SelectItem>
-                      <SelectItem value="software">Software</SelectItem>
-                      <SelectItem value="network">Network</SelectItem>
+                      {ISSUE_TYPES.map((type) => (
+                        <SelectItem key={type.id} value={type.id}>
+                          {type.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Sub-issue Type</Label>
-                  <Select>
+                  <Label>Sub-Issue Type</Label>
+                  <Select value={subIssueType} onValueChange={setSubIssueType} disabled={!issueType}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select sub-issue type" />
+                      <SelectValue placeholder={issueType ? "Select sub-issue type" : "Select issue type first"} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="desktop">Desktop</SelectItem>
-                      <SelectItem value="laptop">Laptop</SelectItem>
-                      <SelectItem value="printer">Printer</SelectItem>
+                      {issueType &&
+                        SUB_ISSUE_TYPES[issueType as keyof typeof SUB_ISSUE_TYPES]?.map((subType) => (
+                          <SelectItem key={subType.id} value={subType.id}>
+                            {subType.name}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
-              {/* Contract and SLA */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Contract</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select contract" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="standard">Standard SLA</SelectItem>
-                      <SelectItem value="premium">Premium SLA</SelectItem>
-                      <SelectItem value="enterprise">Enterprise SLA</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>SLA</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select SLA" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="4hour">4 Hour Response</SelectItem>
-                      <SelectItem value="8hour">8 Hour Response</SelectItem>
-                      <SelectItem value="24hour">24 Hour Response</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Due Date */}
+              {/* Location */}
               <div className="space-y-2">
-                <Label>Due Date</Label>
-                <Input type="datetime-local" />
+                <Label>Location</Label>
+                <Input
+                  placeholder="Enter location (e.g., Main Office, Remote)"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                />
               </div>
 
-              {/* Assets */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Affected Hardware Asset</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select hardware asset" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="laptop1">Laptop X1</SelectItem>
-                      <SelectItem value="desktop1">Desktop D1</SelectItem>
-                      <SelectItem value="printer1">Printer P1</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Affected Software Asset</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select software asset" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="windows">Windows 11</SelectItem>
-                      <SelectItem value="office">Microsoft Office</SelectItem>
-                      <SelectItem value="adobe">Adobe Creative Suite</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              {/* Contact Method */}
+              <div className="space-y-2">
+                <Label>Contact Method</Label>
+                <Input
+                  placeholder="Email or phone number for contact"
+                  value={contactMethod}
+                  onChange={(e) => setContactMethod(e.target.value)}
+                />
               </div>
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* Custom Fields */}
-        <Card>
-          <CardContent className="p-6">
-            <h2 className="text-lg font-semibold mb-4">Custom Fields</h2>
-            <div className="space-y-4">
+              {/* Availability */}
               <div className="space-y-2">
-                <Label>Field 1</Label>
-                <Input placeholder="Custom field 1" />
+                <Label>Availability</Label>
+                <DateTimePicker date={availability} setDate={setAvailability} />
               </div>
-              <div className="space-y-2">
-                <Label>Field 2</Label>
-                <Input placeholder="Custom field 2" />
+
+              {/* Hardware Needs */}
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="needs-hardware"
+                  checked={needsHardware}
+                  onChange={(e) => setNeedsHardware(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <Label htmlFor="needs-hardware" className="text-sm font-medium">
+                  This ticket requires hardware or software change
+                </Label>
               </div>
             </div>
           </CardContent>
@@ -290,13 +435,13 @@ export default function NewTicketPage() {
           <CardContent className="p-6">
             <h2 className="text-lg font-semibold mb-4">Attachments</h2>
             <div className="border-2 border-dashed rounded-lg p-6 text-center">
-              <p className="text-sm text-muted-foreground">
-                Drop files to attach, or{" "}
-                <Button variant="link" className="p-0">
-                  browse
-                </Button>
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">Max file size 25MB each</p>
+              <input type="file" multiple className="hidden" id="file-upload" />
+              <label htmlFor="file-upload" className="cursor-pointer">
+                <p className="text-sm text-muted-foreground">
+                  Drop files to attach, or <span className="text-primary">browse</span>
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">Max file size 25MB each</p>
+              </label>
             </div>
           </CardContent>
         </Card>
