@@ -29,6 +29,7 @@ import { useTicketStatuses } from "@/hooks/useTicketStatuses"
 import { incidentsService } from "@/services/incidents/incidents.service"
 import { useTicketUpdates } from "@/hooks/useTicketUpdates"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { AssignTechnicianDialog } from "@/components/features/technician/assign-technician-dialog"
 
 interface Note {
   id: string
@@ -392,6 +393,11 @@ export default function TicketDetailPage() {
                     {getStatusText(ticket.Status)}
                   </span>
                 </Badge>
+                <AssignTechnicianDialog
+                  ticketId={ticket.CodTicket}
+                  currentTechnicianId={ticket.AssignedToUser}
+                  onAssigned={() => router.refresh()}
+                />
                 <Dialog open={isStatusDialogOpen} onOpenChange={setIsStatusDialogOpen}>
                   <DialogTrigger asChild>
                     <Button variant="outline">Change Status</Button>

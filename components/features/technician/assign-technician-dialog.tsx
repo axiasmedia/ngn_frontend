@@ -19,7 +19,7 @@ import { incidentsService } from "@/services/incidents/incidents.service"
 
 interface AssignTechnicianDialogProps {
   ticketId: string
-  currentTechnicianId?: number
+  currentTechnicianId?: number | null
   onAssigned: () => void
 }
 
@@ -69,7 +69,7 @@ export function AssignTechnicianDialog({ ticketId, currentTechnicianId, onAssign
   return (
     <Dialog open={isOpen} onOpenChange={handleDialogOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="w-full sm:w-auto">
+        <Button variant="outline">
           <UserPlus className="mr-2 h-4 w-4" />
           Assign Technician
         </Button>
