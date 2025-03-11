@@ -1,5 +1,5 @@
 import api from "@/services/api"
-import type { Incident, IncidentDetail, IncidentNote, CreateTicketPayload, QueueTicket, TicketStatus } from "./types"
+import type { Incident, IncidentDetail, IncidentNote, CreateTicketPayload, QueueTicket, TicketStatus, TicketUpdate } from "./types"
 
 // Function to map status codes to status strings
 const getStatusString = (status: number): string => {
@@ -454,6 +454,54 @@ export const incidentsService = {
       console.error("Error fetching ticket details:", error)
       throw error
     }
+  },
+
+
+  /**
+   * Get ticket updates history
+   */
+  getTicketUpdates: async (codTicket: string): Promise<TicketUpdate[]> => {
+    try {
+      const response = await api.get(`/ticket/by-ticket/${codTicket}`)
+      return response.data || []
+    } catch (error) {
+      console.error("Error fetching ticket updates:", error)
+      return []
+    }
+  },
+
+  /**
+   * Convert ticket updates to notes format
+   */
+  convertUpdatesToNotes: async (updates: TicketUpdate[]): Promise<IncidentNote[]> => {
+    const notes: IncidentNote[] = []
+
+    for (const update of updates) {
+      try {
+        // Get the agent name who created the update
+        const agentName = await getUserNameById(update.CreatedByAgent)
+
+        // Format the note text based on the update type
+        let noteText = update.Comments
+
+        // If it's a status change, add the status information
+        if (update.Status) {
+          const statusDescription = getStatusString(update.Status)
+          noteText += ` (Status: ${statusDescription})`
+        }
+
+        notes.push({
+          id: update.IDAuton.toString(),
+          text: noteText,
+          createdAt: new Date(update.CreatedDatetime).toLocaleString(),
+          createdBy: agentName || `Agent ${update.CreatedByAgent}`,
+        })
+      } catch (error) {
+        console.error("Error converting update to note:", error)
+      }
+    }
+
+    return notes
   },
 }
 
