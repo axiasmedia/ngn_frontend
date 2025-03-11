@@ -27,6 +27,7 @@ import api from "@/services/api"
 import { userService } from "@/services/user/user.service"
 import { useTicketStatuses } from "@/hooks/useTicketStatuses"
 import { incidentsService } from "@/services/incidents/incidents.service"
+import { useTicketUpdates } from "@/hooks/useTicketUpdates"
 
 interface Note {
   id: string
@@ -86,6 +87,7 @@ export default function TicketDetailPage() {
   const [submittingNote, setSubmittingNote] = useState(false)
 
   const { statuses, getStatusDescription } = useTicketStatuses()
+  const { notes: ticketNotes, loading: notesLoading } = useTicketUpdates(codTicket)
 
   useEffect(() => {
     const fetchTicket = async () => {
@@ -133,18 +135,8 @@ export default function TicketDetailPage() {
             setNewStatus(enrichedTicket.Status)
             setRequiresChange(!!enrichedTicket.NeedHardware)
 
-            // Initialize mock notes if none exist
-            if (!enrichedTicket.notes || enrichedTicket.notes.length === 0) {
-              const initialNotes = [
-                {
-                  id: "1",
-                  text: "Ticket created in the system.",
-                  createdAt: new Date(enrichedTicket.CreatedDatatime).toLocaleString(),
-                  createdBy: creatorName,
-                },
-              ]
-              setNotes(initialNotes)
-            }
+            // Set the notes in the state
+            setNotes(ticketNotes)
           } else {
             setError(`Ticket ${codTicket} not found`)
           }
@@ -160,7 +152,7 @@ export default function TicketDetailPage() {
     }
 
     fetchTicket()
-  }, [codTicket])
+  }, [codTicket, ticketNotes])
 
   const handleAddNote = async () => {
     if (!newNote.trim()) return
