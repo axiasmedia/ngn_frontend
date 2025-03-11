@@ -24,16 +24,25 @@ export default function TechnicianLoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <div className="flex items-center justify-center mb-4">
-            <div className="h-12 w-12 rounded-full bg-primary flex items-center justify-center">
-              <Wrench className="h-6 w-6 text-primary-foreground" />
-            </div>
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden p-4">
+      {/* Animated background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 z-0">
+        <div className="absolute inset-0 opacity-30">
+          <div className="absolute top-0 -left-4 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
+          <div className="absolute top-0 -right-4 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
+          <div className="absolute -bottom-8 left-20 w-72 h-72 bg-indigo-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
+        </div>
+      </div>
+
+      <Card className="w-full max-w-md relative z-10 shadow-xl">
+        <CardHeader className="space-y-4 items-center text-center">
+          <div className="h-16 w-16 rounded-full bg-primary flex items-center justify-center mx-auto">
+            <Wrench className="h-8 w-8 text-primary-foreground" />
           </div>
-          <CardTitle className="text-center">Technician Portal</CardTitle>
-          <CardDescription className="text-center">Sign in to access the technician dashboard</CardDescription>
+          <div>
+            <CardTitle className="text-xl sm:text-2xl font-bold">Technician Portal</CardTitle>
+            <CardDescription>Sign in to access the technician dashboard</CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           {error && (
@@ -45,7 +54,14 @@ export default function TechnicianLoginPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="h-11"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
@@ -55,9 +71,10 @@ export default function TechnicianLoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                className="h-11"
               />
             </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full h-11" disabled={isLoading}>
               {isLoading ? "Signing in..." : "Sign In"}
             </Button>
           </form>

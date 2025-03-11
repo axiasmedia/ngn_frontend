@@ -133,7 +133,7 @@ export function IncidentList() {
               <div className="text-right">
                 <div className="text-sm text-muted-foreground mb-2">
                   <p>Created: {formatDate(incident.CreatedDatatime)}</p>
-                  <p>Updated: {formatDate(incident.ModDatetime)}</p>
+                  <p>Updated: {formatDate(incident.DueDatetime)}</p>
                 </div>
                 <Link href={`/incidents/${incident.CodTicket}`}>
                   <Button size="sm" variant="outline" className="flex items-center gap-1">

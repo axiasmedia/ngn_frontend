@@ -13,11 +13,11 @@ export interface Incident {
   Location: string | null
   AssignedToUser: string | null
   Availability: string
-  CreatedDatatime: string // Updated field name to match API
-  ModDatetime: string | null // Updated field name to match API
-  AssignedHWMS: string | null // Updated field name to match API
+  CreatedDatatime: string 
+  DueDatetime: string | null 
+  AssignedHWMS: string | null 
   AssignedVendor: string | null
-  NeedHardware: number // Updated field name to match API
+  NeedHardware: number 
   IssueType: string | null
   SubIssueType: string | null
 }
@@ -114,7 +114,7 @@ export interface QueueTicket {
   AssignedToUser: number | null
   Availability: string
   CreatedDatatime: string
-  ModDatetime: string | null
+  DueDatetime: string | null
   AssignedHWMS: number | null
   AssignedVendor: number | null
   NeedHardware: number

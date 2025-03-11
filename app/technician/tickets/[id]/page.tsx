@@ -54,7 +54,7 @@ interface Ticket {
   AssignedUserName?: string
   Availability: string
   CreatedDatatime: string
-  ModDatetime: string | null
+  DueDatetime: string | null
   AssignedHWMS: number | null
   AssignedVendor: number | null
   NeedHardware: number
@@ -516,7 +516,7 @@ export default function TicketDetailPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium">Last Modified</p>
-                  <p className="text-sm text-muted-foreground">{formatDate(ticket.ModDatetime) || "Not modified"}</p>
+                  <p className="text-sm text-muted-foreground">{formatDate(ticket.DueDatetime) || "Not modified"}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium">Availability</p>

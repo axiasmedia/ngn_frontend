@@ -107,7 +107,7 @@ export const incidentsService = {
                 },
               ],
               createdAt: ticketData.CreatedDatatime,
-              updatedAt: ticketData.ModDatetime,
+              updatedAt: ticketData.DueDatetime,
             }
           }
         }
@@ -162,7 +162,7 @@ export const incidentsService = {
               },
             ],
             createdAt: ticketData.CreatedDatatime,
-            updatedAt: ticketData.ModDatetime,
+            updatedAt: ticketData.DueDatetime,
           }
         }
       }
@@ -263,7 +263,7 @@ export const incidentsService = {
       AssignedToUser: null,
       Availability: ticket.Availability,
       CreatedDatatime: new Date().toISOString(),
-      ModDatetime: null,
+      DueDatetime: null,
       AssignedHWMS: null,
       AssignedVendor: null,
       NeedHardware: 0,
