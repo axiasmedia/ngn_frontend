@@ -343,10 +343,9 @@ export default function NewTicketPage() {
                 <Label>Assignee</Label>
                 <Select value={assignedTo} onValueChange={setAssignedTo}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select assignee (optional)" />
+                    <SelectValue placeholder="Select assignee" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="0">Unassigned</SelectItem>
                     {technicians.map((tech) => (
                       <SelectItem key={tech.id} value={tech.id.toString()}>
                         {tech.name}
