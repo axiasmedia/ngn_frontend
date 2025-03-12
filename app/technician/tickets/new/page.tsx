@@ -17,6 +17,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 import { incidentsService } from "@/services/incidents/incidents.service"
 import { useAuth } from "@/components/auth/auth-provider"
+import { useTicketStatuses } from "@/hooks/useTicketStatuses" // Add this import
 
 // Mock data for clients, products, etc.
 const MOCK_CLIENTS = [
@@ -69,14 +70,16 @@ const SUB_ISSUE_TYPES = {
   ],
 }
 
+// Update the component to use useTicketStatuses and handle email selection
 export default function NewTicketPage() {
   const router = useRouter()
   const { userInfo } = useAuth()
+  const { statuses, loading: statusesLoading } = useTicketStatuses() // Add this hook
 
   // Form state
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
-  const [priority, setPriority] = useState("Medium")
+  const [priority, setPriority] = useState("medium")
   const [status, setStatus] = useState("1") // Default to "Open"
   const [clientId, setClientId] = useState("")
   const [affectedProduct, setAffectedProduct] = useState("")
@@ -84,6 +87,7 @@ export default function NewTicketPage() {
   const [subIssueType, setSubIssueType] = useState("")
   const [location, setLocation] = useState("")
   const [contactMethod, setContactMethod] = useState("")
+  const [contactMethodType, setContactMethodType] = useState("") // Add this state for contact method type
   const [availability, setAvailability] = useState<Date | undefined>(new Date())
   const [needsHardware, setNeedsHardware] = useState(false)
   const [assignedTo, setAssignedTo] = useState("")
@@ -135,6 +139,22 @@ export default function NewTicketPage() {
     setSubIssueType("")
   }, [issueType])
 
+  // Update the contact method when contact method type changes
+  useEffect(() => {
+    if (contactMethodType === "email" && userInfo?.email) {
+      setContactMethod(userInfo.email)
+    } else if (contactMethodType === "support1") {
+      setContactMethod("support1@ngnsupport.net")
+    } else if (contactMethodType === "support2") {
+      setContactMethod("support2@ngnsupport.net")
+    } else if (contactMethodType === "phone") {
+      setContactMethod("")
+    } else {
+      setContactMethod("")
+    }
+  }, [contactMethodType, userInfo?.email])
+
+  // Update the handleSubmit function to include the contact method
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
 
@@ -154,7 +174,7 @@ export default function NewTicketPage() {
         Status: Number(status),
         Type: "TechnicianTicket", // Set type to TechnicianTicket
         AffectedProduct: Number(affectedProduct),
-        Priority: priority,
+        Priority: priority.toLowerCase(),
         CreatedBy: userInfo?.id || 55, // Default to a technician ID if userInfo is not available
         ContactMethod: contactMethod || "support@chrysalishealth.org",
         Location: location || null,
@@ -184,6 +204,7 @@ export default function NewTicketPage() {
     }
   }
 
+  // Update the Status dropdown to use the statuses from the hook
   return (
     <div className="container mx-auto py-6">
       <div className="mb-6">
@@ -286,9 +307,21 @@ export default function NewTicketPage() {
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1">Open</SelectItem>
-                      <SelectItem value="2">In Progress</SelectItem>
-                      <SelectItem value="5">Pending</SelectItem>
+                      {statusesLoading ? (
+                        <SelectItem value="1">Loading...</SelectItem>
+                      ) : statuses.length > 0 ? (
+                        statuses.map((status) => (
+                          <SelectItem key={status.IDStatus} value={status.IDStatus.toString()}>
+                            {status.Description}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <>
+                          <SelectItem value="1">Open</SelectItem>
+                          <SelectItem value="2">In Progress</SelectItem>
+                          <SelectItem value="5">Pending</SelectItem>
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -397,14 +430,37 @@ export default function NewTicketPage() {
                 />
               </div>
 
-              {/* Contact Method */}
+              {/* Contact Method - Updated to match user ticket form */}
               <div className="space-y-2">
                 <Label>Contact Method</Label>
-                <Input
-                  placeholder="Email or phone number for contact"
-                  value={contactMethod}
-                  onChange={(e) => setContactMethod(e.target.value)}
-                />
+                <Select name="contact-method" value={contactMethodType} onValueChange={setContactMethodType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select contact method" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {userInfo?.email && <SelectItem value="email">Your Email ({userInfo.email})</SelectItem>}
+                    <SelectItem value="support1">Email - Primary Support</SelectItem>
+                    <SelectItem value="support2">Email - Secondary Support</SelectItem>
+                    <SelectItem value="phone">Phone</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {contactMethodType === "email" && userInfo?.email && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Your email address ({userInfo.email}) will be used as the contact method.
+                  </p>
+                )}
+
+                {(contactMethodType === "phone" || contactMethodType === "other") && (
+                  <div className="mt-2">
+                    <Input
+                      placeholder={contactMethodType === "phone" ? "Enter phone number" : "Enter contact details"}
+                      value={contactMethod}
+                      onChange={(e) => setContactMethod(e.target.value)}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Availability */}

@@ -94,6 +94,12 @@ export interface CreateTicketPayload {
   ClientID: number
   AffectedProduct: number
   AffectedUsers: number[]
+  Location?: string | null
+  AssignedToUser?: number | null
+  NeedHardware?: number
+  IssueType?: string | null
+  SubIssueType?: string | null
+  Priority?: string
   attachments?: File[]
 }
 
