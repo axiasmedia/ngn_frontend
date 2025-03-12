@@ -103,10 +103,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Decode token to get user role
       const decoded = jwtDecode<TokenPayload>(access_token)
-
+      console.log(decoded)
       // Check if user is trying to access the correct portal
       const isUser = decoded.role === "User"
-
+      console.log({ isUser, isUserPortal, role: decoded.role })
       if (isUserPortal && !isUser) {
         // User trying to access user portal with technician credentials
         setError("You're using technician credentials on the user portal. Please use the technician portal instead.")
