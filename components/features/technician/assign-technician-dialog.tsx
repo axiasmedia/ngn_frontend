@@ -28,6 +28,7 @@ export function AssignTechnicianDialog({ ticketId, currentTechnicianId, onAssign
   const [selectedTechnician, setSelectedTechnician] = useState<string>("")
   const [technicians, setTechnicians] = useState<{ id: number; name: string }[]>([])
   const [loading, setLoading] = useState(false)
+  const [fetchingTechs, setFetchingTechs] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Load technicians when dialog opens
@@ -35,6 +36,8 @@ export function AssignTechnicianDialog({ ticketId, currentTechnicianId, onAssign
     setIsOpen(open)
     if (open) {
       try {
+        setFetchingTechs(true)
+        setError(null)
         const techs = await incidentsService.getTechnicians()
         setTechnicians(techs)
         // Set current technician if one is assigned
@@ -43,10 +46,11 @@ export function AssignTechnicianDialog({ ticketId, currentTechnicianId, onAssign
         }
       } catch (err) {
         setError("Failed to load technicians")
+      } finally {
+        setFetchingTechs(false)
       }
     }
   }
-
   const handleAssign = async () => {
     if (!selectedTechnician) {
       setError("Please select a technician")
@@ -90,6 +94,12 @@ export function AssignTechnicianDialog({ ticketId, currentTechnicianId, onAssign
 
           <div className="space-y-2">
             <Label>Select Technician</Label>
+            {fetchingTechs ? (
+              <div className="flex items-center space-x-2 py-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm text-muted-foreground">Loading technicians...</span>
+              </div>
+            ) : (
             <Select value={selectedTechnician} onValueChange={setSelectedTechnician}>
               <SelectTrigger>
                 <SelectValue placeholder="Choose a technician" />
@@ -102,6 +112,7 @@ export function AssignTechnicianDialog({ ticketId, currentTechnicianId, onAssign
                 ))}
               </SelectContent>
             </Select>
+            )}
           </div>
         </div>
 
@@ -109,7 +120,7 @@ export function AssignTechnicianDialog({ ticketId, currentTechnicianId, onAssign
           <Button variant="outline" onClick={() => setIsOpen(false)}>
             Cancel
           </Button>
-          <Button onClick={handleAssign} disabled={loading}>
+          <Button onClick={handleAssign} disabled={loading || fetchingTechs || !selectedTechnician}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Assign
           </Button>
