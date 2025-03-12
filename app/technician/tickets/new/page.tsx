@@ -442,10 +442,6 @@ export default function NewTicketPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {userInfo?.email && <SelectItem value="email">Your Email ({userInfo.email})</SelectItem>}
-                    <SelectItem value="support1">Email - Primary Support</SelectItem>
-                    <SelectItem value="support2">Email - Secondary Support</SelectItem>
-                    <SelectItem value="phone">Phone</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
                   </SelectContent>
                 </Select>
 
