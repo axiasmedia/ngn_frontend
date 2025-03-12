@@ -190,7 +190,9 @@ export default function TechnicianDashboardPage() {
                         <TableCell className="max-w-[250px] truncate">{ticket.Title}</TableCell>
                         <TableCell>{ticket.ClientName}</TableCell>
                         <TableCell className="max-w-[120px] truncate">
-                          {ticket.AssignedUserName || "Unassigned"}
+                        <div className="truncate">
+                            {ticket.AssignedToUser ? ticket.AssignedUserName || "Loading..." : "Unassigned"}
+                          </div>
                         </TableCell>
                         <TableCell>{formatDate(ticket.CreatedDatatime)}</TableCell>
                         <TableCell>{ticket.Availability ? formatDate(ticket.Availability) : "Not set"}</TableCell>
