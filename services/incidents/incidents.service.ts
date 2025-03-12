@@ -223,36 +223,6 @@ export const incidentsService = {
     }
   },
 
-  /**
-   * Create a new incident (deprecated - use createTicket instead)
-   */
-  createIncident: async (ticket: CreateTicketPayload): Promise<Incident> => {
-    console.warn("createIncident is deprecated, use createTicket instead")
-    // Mock response for now
-    return {
-      IDTicket: Math.floor(Math.random() * 1000),
-      CodTicket: "INC-" + Math.floor(Math.random() * 1000),
-      ClientID: ticket.ClientID,
-      Title: ticket.Title,
-      Description: ticket.Description,
-      Status: ticket.Status,
-      Type: ticket.Type,
-      AffectedProduct: ticket.AffectedProduct,
-      Priority: "medium",
-      CreatedBy: ticket.CreatedBy,
-      ContactMethod: ticket.ContactMethod,
-      Location: null,
-      AssignedToUser: null,
-      Availability: ticket.Availability,
-      CreatedDatatime: new Date().toISOString(),
-      DueDatetime: null,
-      AssignedHWMS: null,
-      AssignedVendor: null,
-      NeedHardware: 0,
-      IssueType: null,
-      SubIssueType: null,
-    }
-  },
 
   /**
    * Add a note to an incident
@@ -374,8 +344,8 @@ export const incidentsService = {
           if (typeof item === "object" && item !== null) {
             // Try to find ID and Description fields with various possible names
             const id =
-              item.IDStatus !== undefined
-                ? item.IDStatus
+              item.IDStatusT !== undefined
+                ? item.IDStatusT
                 : item.id !== undefined
                   ? item.id
                   : item.ID !== undefined
@@ -392,14 +362,14 @@ export const incidentsService = {
                     : `Status ${index + 1}`
 
             return {
-              IDStatus: id,
+              IDStatusT: id,
               Description: description,
             }
           }
 
           // If item is not an object, create a default status
           return {
-            IDStatus: index + 1,
+            IDStatusT: index + 1,
             Description: `Status ${index + 1}`,
           }
         })
@@ -408,19 +378,23 @@ export const incidentsService = {
       // Fallback to mock data if response is not as expected
       console.warn("Unexpected response format from ticket status API, using fallback data")
       return [
-        { IDStatus: 1, Description: "Open" },
-        { IDStatus: 2, Description: "In Progress" },
-        { IDStatus: 3, Description: "Resolved" },
-        { IDStatus: 4, Description: "Closed" },
+        { IDStatusT: 1, Description: "Open" },
+        { IDStatusT: 2, Description: "In Progress" },
+        { IDStatusT: 3, Description: "Resolved" },
+        { IDStatusT: 4, Description: "Closed" },
+        { IDStatusT: 5, Description: "Pending" },
+        { IDStatusT: 6, Description: "Cancelled" },
       ]
     } catch (error) {
       console.error("Error fetching ticket statuses:", error)
       // Fallback to mock data if API fails
       return [
-        { IDStatus: 1, Description: "Open" },
-        { IDStatus: 2, Description: "In Progress" },
-        { IDStatus: 3, Description: "Resolved" },
-        { IDStatus: 4, Description: "Closed" },
+        { IDStatusT: 1, Description: "Open" },
+        { IDStatusT: 2, Description: "In Progress" },
+        { IDStatusT: 3, Description: "Resolved" },
+        { IDStatusT: 4, Description: "Closed" },
+        { IDStatusT: 5, Description: "Pending" },
+        { IDStatusT: 6, Description: "Cancelled" },
       ]
     }
   },
@@ -465,7 +439,7 @@ export const incidentsService = {
       const statuses = await incidentsService.getTicketStatuses()
       statusMap = statuses.reduce(
         (map, status) => {
-          map[status.IDStatus] = status.Description
+          map[status.IDStatusT] = status.Description
           return map
         },
         {} as Record<number, string>,

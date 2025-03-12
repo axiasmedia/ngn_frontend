@@ -311,7 +311,7 @@ export default function NewTicketPage() {
                         <SelectItem value="1">Loading...</SelectItem>
                       ) : statuses.length > 0 ? (
                         statuses.map((status) => (
-                          <SelectItem key={status.IDStatus} value={status.IDStatus.toString()}>
+                          <SelectItem key={status.IDStatusT} value={status.IDStatusT.toString()}>
                             {status.Description}
                           </SelectItem>
                         ))

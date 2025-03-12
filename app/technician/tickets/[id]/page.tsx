@@ -6,7 +6,28 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, AlertCircle, Clock, CheckCircle, Loader2, Info } from "lucide-react"
+import {
+  ArrowLeft,
+  AlertCircle,
+  Clock,
+  CheckCircle,
+  Loader2,
+  Info,
+  XCircle,
+  UserCheck,
+  ArrowUp,
+  RefreshCw,
+  MapPin,
+  Package,
+  UserPlus,
+  RefreshCcw,
+  Calendar,
+  Building,
+  MessageSquare,
+  PenToolIcon as Tool,
+  User,
+  HelpCircle,
+} from "lucide-react"
 import Link from "next/link"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
@@ -28,7 +49,6 @@ import { userService } from "@/services/user/user.service"
 import { useTicketStatuses } from "@/hooks/useTicketStatuses"
 import { incidentsService } from "@/services/incidents/incidents.service"
 import { useTicketUpdates } from "@/hooks/useTicketUpdates"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { AssignTechnicianDialog } from "@/components/features/technician/assign-technician-dialog"
 
 interface Note {
@@ -57,7 +77,7 @@ interface Ticket {
   AssignedUserName?: string
   Availability: string
   CreatedDatatime: string
-  DueDatetime: string | null
+  ModDatetime: string | null
   AssignedHWMS: number | null
   AssignedVendor: number | null
   NeedHardware: number
@@ -288,30 +308,88 @@ export default function TicketDetailPage() {
   // Helper functions for status and priority display
 
   const getStatusColor = (status: number): string => {
-    switch (status) {
-      case 1:
+    const statusDesc = getStatusDescription(status)
+
+    // Map status descriptions to colors
+    switch (statusDesc.toLowerCase()) {
+      case "open":
         return "bg-blue-100 text-blue-800"
-      case 2:
-        return "bg-yellow-100 text-yellow-800"
-      case 3:
+      case "in progress":
+        return "bg-amber-100 text-amber-800"
+      case "resolved":
         return "bg-green-100 text-green-800"
-      case 4:
+      case "closed":
         return "bg-gray-100 text-gray-800"
+      case "pending":
+        return "bg-purple-100 text-purple-800"
+      case "cancelled":
+        return "bg-red-100 text-red-800"
       default:
+        // Try to determine color based on keywords in the status description
+        if (statusDesc.toLowerCase().includes("progress") || statusDesc.toLowerCase().includes("pending")) {
+          return "bg-amber-100 text-amber-800"
+        } else if (statusDesc.toLowerCase().includes("resolv") || statusDesc.toLowerCase().includes("complete")) {
+          return "bg-green-100 text-green-800"
+        } else if (statusDesc.toLowerCase().includes("cancel")) {
+          return "bg-red-100 text-red-800"
+        } else if (statusDesc.toLowerCase().includes("close")) {
+          return "bg-gray-100 text-gray-800"
+        }
         return "bg-gray-100 text-gray-800"
     }
   }
 
+  // Update the getStatusIcon function to handle all the new icons
   const getStatusIcon = (status: number) => {
-    switch (status) {
-      case 1:
+    const statusDesc = getStatusDescription(status)
+
+    // Map status descriptions to icons
+    switch (statusDesc.toLowerCase()) {
+      case "new":
         return <AlertCircle className="h-4 w-4" />
-      case 2:
+      case "assigned":
+        return <UserCheck className="h-4 w-4" />
+      case "in progress":
         return <Clock className="h-4 w-4" />
-      case 3:
+      case "completed":
         return <CheckCircle className="h-4 w-4" />
+      case "waiting for customer":
+        return <Clock className="h-4 w-4" /> // Using Clock as fallback
+      case "escalated":
+        return <ArrowUp className="h-4 w-4" />
+      case "reopened":
+        return <RefreshCw className="h-4 w-4" />
+      case "on-site visit":
+        return <MapPin className="h-4 w-4" />
+      case "awaiting shipment":
+        return <Package className="h-4 w-4" />
+      case "on boarding":
+        return <UserPlus className="h-4 w-4" />
+      case "awaiting replacement":
+        return <RefreshCcw className="h-4 w-4" /> // Using RefreshCcw as replacement icon
+      case "scheduled":
+        return <Calendar className="h-4 w-4" />
+      case "waiting for vendor response":
+        return <Building className="h-4 w-4" />
+      case "response received":
+        return <MessageSquare className="h-4 w-4" />
+      case "on-site progress":
+        return <Tool className="h-4 w-4" />
+      case "user response":
+        return <User className="h-4 w-4" />
+      // Legacy status mappings
+      case "open":
+        return <AlertCircle className="h-4 w-4" />
+      case "resolved":
+        return <CheckCircle className="h-4 w-4" />
+      case "closed":
+        return <CheckCircle className="h-4 w-4" />
+      case "pending":
+        return <Clock className="h-4 w-4" />
+      case "cancelled":
+        return <XCircle className="h-4 w-4" />
       default:
-        return <Info className="h-4 w-4" />
+        return <HelpCircle className="h-4 w-4" />
     }
   }
 
@@ -423,8 +501,8 @@ export default function TicketDetailPage() {
                             {statuses.length > 0 ? (
                               statuses.map((status) => (
                                 <SelectItem
-                                  key={typeof status.IDStatus !== "undefined" ? status.IDStatus : Math.random()}
-                                  value={typeof status.IDStatus !== "undefined" ? status.IDStatus.toString() : "0"}
+                                  key={typeof status.IDStatusT !== "undefined" ? status.IDStatusT : Math.random()}
+                                  value={typeof status.IDStatusT !== "undefined" ? status.IDStatusT.toString() : "0"}
                                 >
                                   {status.Description || "Unknown Status"}
                                 </SelectItem>
@@ -515,7 +593,7 @@ export default function TicketDetailPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium">Last Modified</p>
-                  <p className="text-sm text-muted-foreground">{formatDate(ticket.DueDatetime) || "Not modified"}</p>
+                  <p className="text-sm text-muted-foreground">{formatDate(ticket.ModDatetime) || "Not modified"}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium">Availability</p>
@@ -666,7 +744,7 @@ export default function TicketDetailPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-            <ScrollArea className="h-[300px] pr-4">
+              <div className="space-y-4">
                 {notes.length > 0 ? (
                   notes.map((note) => (
                     <div key={note.id} className="rounded-lg border p-4">
@@ -681,7 +759,7 @@ export default function TicketDetailPage() {
                 ) : (
                   <p className="text-muted-foreground">No notes available for this ticket.</p>
                 )}
-              </ScrollArea>
+              </div>
 
               <Separator />
 
