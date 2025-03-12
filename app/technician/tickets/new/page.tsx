@@ -17,7 +17,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 import { incidentsService } from "@/services/incidents/incidents.service"
 import { useAuth } from "@/components/auth/auth-provider"
-import { useTicketStatuses } from "@/hooks/useTicketStatuses" // Add this import
+import { useTicketStatuses } from "@/hooks/useTicketStatuses"
+import { useProducts } from "@/hooks/useProducts"
 
 // Mock data for clients, products, etc.
 const MOCK_CLIENTS = [
@@ -25,15 +26,6 @@ const MOCK_CLIENTS = [
   { id: 5, name: "Medical Center" },
   { id: 6, name: "Regional Hospital" },
 ]
-
-const MOCK_PRODUCTS = [
-  { id: 1, name: "Email Service" },
-  { id: 2, name: "Laptop" },
-  { id: 3, name: "VPN Access" },
-  { id: 4, name: "Desktop Computer" },
-  { id: 5, name: "Mobile Device" },
-]
-
 const ISSUE_TYPES = [
   { id: "hardware", name: "Hardware" },
   { id: "software", name: "Software" },
@@ -74,8 +66,8 @@ const SUB_ISSUE_TYPES = {
 export default function NewTicketPage() {
   const router = useRouter()
   const { userInfo } = useAuth()
-  const { statuses, loading: statusesLoading } = useTicketStatuses() // Add this hook
-
+  const { statuses, loading: statusesLoading } = useTicketStatuses()
+  const { products, loading: productsLoading, error: productsError } = useProducts()
   // Form state
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
@@ -120,20 +112,6 @@ export default function NewTicketPage() {
 
     return () => clearInterval(timer)
   }, [])
-
-  // Format duration as HH:MM:SS
-  const formatDuration = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600)
-    const minutes = Math.floor((seconds % 3600) / 60)
-    const secs = seconds % 60
-
-    return [
-      hours.toString().padStart(2, "0"),
-      minutes.toString().padStart(2, "0"),
-      secs.toString().padStart(2, "0"),
-    ].join(":")
-  }
-
   // Reset sub-issue type when issue type changes
   useEffect(() => {
     setSubIssueType("")
@@ -205,6 +183,18 @@ export default function NewTicketPage() {
   }
 
   // Update the Status dropdown to use the statuses from the hook
+  const formatDuration = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600)
+    const minutes = Math.floor((seconds % 3600) / 60)
+    const secs = seconds % 60
+
+    return [
+      hours.toString().padStart(2, "0"),
+      minutes.toString().padStart(2, "0"),
+      secs.toString().padStart(2, "0"),
+    ].join(":")
+  }
+
   return (
     <div className="container mx-auto py-6">
       <div className="mb-6">
@@ -373,16 +363,30 @@ export default function NewTicketPage() {
                 </Label>
                 <Select value={affectedProduct} onValueChange={setAffectedProduct} required>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select affected product" />
+                    <SelectValue placeholder={productsLoading ? "Loading products..." : "Select affected product"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {MOCK_PRODUCTS.map((product) => (
-                      <SelectItem key={product.id} value={product.id.toString()}>
-                        {product.name}
+                  {productsLoading ? (
+                      <div className="flex items-center justify-center py-2">
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        <span>Loading products...</span>
+                      </div>
+                    ) : productsError ? (
+                      <div className="text-red-500 p-2 text-sm">Failed to load products. Please try again later.</div>
+                    ) : products.length > 0 ? (
+                      products.map((product) => (
+                        <SelectItem key={product.id} value={product.id.toString()}>
+                          {product.name}
                       </SelectItem>
-                    ))}
+                     ))
+                    ) : (
+                      <div className="p-2 text-sm text-muted-foreground">No products available</div>
+                    )}
                   </SelectContent>
                 </Select>
+                {productsError && (
+                  <p className="text-sm text-red-500 mt-1">Error loading products. Using default options.</p>
+                )}
               </div>
 
               {/* Issue Type and Sub-Issue Type */}
@@ -478,9 +482,12 @@ export default function NewTicketPage() {
                   onChange={(e) => setNeedsHardware(e.target.checked)}
                   className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                 />
-                <Label htmlFor="needs-hardware" className="text-sm font-medium">
+                 <label
+                  htmlFor="needs-hardware"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
                   This ticket requires hardware or software change
-                </Label>
+                </label>
               </div>
             </div>
           </CardContent>

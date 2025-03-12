@@ -12,11 +12,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { useIncidentForm } from "@/hooks/useIncidentForm"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle, Loader2 } from "lucide-react"
 import { MultiUserSelect } from "./multi-user-select"
 import { DateTimePicker } from "@/components/ui/date-picker"
 import { useAuth } from "@/components/auth/auth-provider"
 import { useUsers } from "@/hooks/useUsers"
+import { useProducts } from "@/hooks/useProducts"
 
 export function IncidentForm() {
   const { isSubmitting, error, handleSubmit, handleFileChange } = useIncidentForm()
@@ -26,6 +27,8 @@ export function IncidentForm() {
   const [contactMethod, setContactMethod] = useState<string>("")
   const { userInfo } = useAuth() // Get user info from auth context
   const { users, loading: loadingUsers } = useUsers("User")
+  const { products, loading: productsLoading, error:
+    productsError} = useProducts()
   
   // Update contact method when it changes
   const handleContactMethodChange = (value: string) => {
@@ -135,17 +138,30 @@ export function IncidentForm() {
             <h2 className="text-lg font-medium text-primary">What is being affected?</h2>
             <Select name="affected-item">
               <SelectTrigger>
-                <SelectValue placeholder="Select affected item" />
+              <SelectValue placeholder={productsLoading ? "Loading products..." : "Select affected item"} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="1">Laptop</SelectItem>
-                <SelectItem value="2">desktop</SelectItem>
-                <SelectItem value="3">Application</SelectItem>
-                <SelectItem value="4">handset</SelectItem>
-                <SelectItem value="5">Printer</SelectItem>
-                <SelectItem value="6">Softphone</SelectItem>
+              {productsLoading ? (
+                  <div className="flex items-center justify-center py-2">
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <span>Loading products...</span>
+                  </div>
+                ) : productsError ? (
+                  <div className="text-red-500 p-2 text-sm">Failed to load products. Please try again later.</div>
+                ) : products.length > 0 ? (
+                  products.map((product) => (
+                    <SelectItem key={product.id} value={product.id.toString()}>
+                      {product.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <div className="p-2 text-sm text-muted-foreground">No products available</div>
+                )}
               </SelectContent>
             </Select>
+            {productsError && (
+              <p className="text-sm text-red-500 mt-1">Error loading products. Using default options.</p>
+            )}
           </div>
 
           {/* Incident title */}

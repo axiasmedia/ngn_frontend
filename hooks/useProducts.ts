@@ -1,12 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import api from "@/services/api"
-
-interface Product {
-  IDProduct: number
-  Description: string
-}
+import { productService } from "@/services/products/products.service"
+import type { Product } from "@/services/products/types"
 
 export function useProducts() {
   const [products, setProducts] = useState<Product[]>([])
@@ -17,16 +13,11 @@ export function useProducts() {
     const fetchProducts = async () => {
       try {
         setLoading(true)
-        const response = await api.get<Product[]>("/products/")
-
-        if (response.data && Array.isArray(response.data)) {
-          setProducts(response.data)
-        } else {
-          console.error("Invalid product data format:", response.data)
-          setError("Failed to load products: Invalid data format")
-        }
+        const data = await productService.getProducts()
+        setProducts(data)
+        setError(null)
       } catch (err) {
-        console.error("Error fetching products:", err)
+        console.error("Error in useProducts hook:", err)
         setError("Failed to load products")
       } finally {
         setLoading(false)
