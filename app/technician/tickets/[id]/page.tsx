@@ -107,7 +107,9 @@ export default function TicketDetailPage() {
   const [assignType, setAssignType] = useState<string>("technician")
   const [assignedTo, setAssignedTo] = useState<string>("")
   const [submittingNote, setSubmittingNote] = useState(false)
-
+  const [hardwareTechnicians, setHardwareTechnicians] = useState<{ id: number; name: string }[]>([])
+  const [vendors, setVendors] = useState<{ id: number; name: string }[]>([])
+  const [loadingHardwareOptions, setLoadingHardwareOptions] = useState(false)
   const { statuses, getStatusDescription } = useTicketStatuses()
   const { notes: ticketNotes, loading: notesLoading } = useTicketUpdates(codTicket)
 
@@ -175,6 +177,26 @@ export default function TicketDetailPage() {
 
     fetchTicket()
   }, [codTicket, ticketNotes])
+
+  useEffect(() => {
+    const loadHardwareOptions = async () => {
+      try {
+        setLoadingHardwareOptions(true)
+        const [techsData, vendorsData] = await Promise.all([
+          incidentsService.getHardwareTechnicians(),
+          incidentsService.getVendors(),
+        ])
+        setHardwareTechnicians(techsData)
+        setVendors(vendorsData)
+      } catch (err) {
+        console.error("Error loading hardware options:", err)
+      } finally {
+        setLoadingHardwareOptions(false)
+      }
+    }
+
+    loadHardwareOptions()
+  }, [])
 
   const handleAddNote = async () => {
     if (!newNote.trim()) return
@@ -262,32 +284,50 @@ export default function TicketDetailPage() {
     if (!ticket) return
 
     try {
-      // In a real implementation, this would be an API call
-      // await api.patch(`/ticket/${codTicket}/hardware`, {
-      //   needsHardware: requiresChange,
-      //   assignType,
-      //   assignedTo
-      // })
+       // If hardware is not required, just update the UI
+       if (!requiresChange) {
+        // Add a note about the hardware change
+        const hardwareNote = {
+          id: Date.now().toString(),
+          text: "Ticket marked as not requiring hardware/software change.",
+          createdAt: new Date().toLocaleString(),
+          createdBy: "Tech Support Team",
+        }
 
+        // Update ticket and add note
+        setTicket({
+          ...ticket,
+          NeedHardware: 0,
+          assignType: undefined,
+          assignedTo: undefined,
+        })
+        setNotes([...notes, hardwareNote])
+        return
+      }
+
+      // Validate selection
+      if (!assignedTo) {
+        setError("Please select a technician or vendor")
+        return
+      }
+
+      // Determine the type of assignment and ID
+      const needHardware = assignType === "technician" ? 1 : 2
+      const assignedId = Number(assignedTo)
+
+      // Call the API to assign hardware
+      await incidentsService.assignHardware(codTicket, needHardware, assignedId)
+
+      // Get the name of the assigned entity
       const assigneeName =
         assignType === "technician"
-          ? {
-              tech1: "John Smith",
-              tech2: "Maria Garcia",
-              tech3: "David Johnson",
-            }[assignedTo] || "Unknown"
-          : {
-              vendor1: "TechSupply Inc.",
-              vendor2: "Hardware Solutions Ltd.",
-              vendor3: "IT Equipment Partners",
-            }[assignedTo] || "Unknown"
+           ? hardwareTechnicians.find((t) => t.id === assignedId)?.name || `Technician ${assignedId}`
+          : vendors.find((v) => v.id === assignedId)?.name || `Vendor ${assignedId}`
 
       // Add a note about the hardware change
       const hardwareNote = {
         id: Date.now().toString(),
-        text: requiresChange
-          ? `Ticket marked as requiring hardware/software change. Assigned to ${assignType} ${assigneeName}.`
-          : "Ticket marked as not requiring hardware/software change.",
+        text: `Ticket marked as requiring hardware/software change. Assigned to ${assignType} ${assigneeName}.`,
         createdAt: new Date().toLocaleString(),
         createdBy: "Tech Support Team",
       }
@@ -295,13 +335,15 @@ export default function TicketDetailPage() {
       // Update ticket and add note
       setTicket({
         ...ticket,
-        NeedHardware: requiresChange ? 1 : 0,
-        assignType: requiresChange ? assignType : undefined,
-        assignedTo: requiresChange ? assignedTo : undefined,
+        NeedHardware: needHardware,
+        assignType: assignType,
+        assignedTo: assignedTo,
       })
+      // Clear any previous errors
       setNotes([...notes, hardwareNote])
     } catch (err) {
       console.error("Failed to update hardware requirements:", err)
+      setError("Failed to assign hardware. Please try again.")
     }
   }
 
@@ -675,38 +717,64 @@ export default function TicketDetailPage() {
                       </div>
                     </RadioGroup>
                   </div>
-
-                  {/* Technician Selection */}
                   {assignType === "technician" && (
                     <div className="space-y-2">
-                      <Label>Select Technician</Label>
+                       <Label>Select Hardware Technician</Label>
+                      {loadingHardwareOptions ? (
+                        <div className="flex items-center space-x-2 py-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span className="text-sm text-muted-foreground">Loading technicians...</span>
+                        </div>
+                      ) : (
                       <Select value={assignedTo} onValueChange={setAssignedTo}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select a technician" />
+                        <SelectValue placeholder="Select a hardware technician" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="tech1">John Smith (Hardware)</SelectItem>
-                          <SelectItem value="tech2">Maria Garcia (Hardware)</SelectItem>
-                          <SelectItem value="tech3">David Johnson (Hardware)</SelectItem>
+                        {hardwareTechnicians.length > 0 ? (
+                              hardwareTechnicians.map((tech) => (
+                                <SelectItem key={tech.id} value={tech.id.toString()}>
+                                  {tech.name}
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <SelectItem value="0" disabled>
+                                No technicians available
+                              </SelectItem>
+                            )}
                         </SelectContent>
                       </Select>
+                      )}
                     </div>
                   )}
-
-                  {/* Vendor Selection */}
                   {assignType === "vendor" && (
                     <div className="space-y-2">
                       <Label>Select Vendor</Label>
+                      {loadingHardwareOptions ? (
+                        <div className="flex items-center space-x-2 py-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span className="text-sm text-muted-foreground">Loading vendors...</span>
+                        </div>
+                      ) : (
                       <Select value={assignedTo} onValueChange={setAssignedTo}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a vendor" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="vendor1">TechSupply Inc.</SelectItem>
-                          <SelectItem value="vendor2">Hardware Solutions Ltd.</SelectItem>
-                          <SelectItem value="vendor3">IT Equipment Partners</SelectItem>
+                        {vendors.length > 0 ? (
+                              vendors.map((vendor) => (
+                                <SelectItem key={vendor.id} value={vendor.id.toString()}>
+                                  {vendor.name}
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <SelectItem value="0" disabled>
+                                No vendors available
+                              </SelectItem>
+                            )}
                         </SelectContent>
                       </Select>
+                       )}
                     </div>
                   )}
 
@@ -718,16 +786,9 @@ export default function TicketDetailPage() {
                       <AlertDescription>
                         This ticket will be shared with {assignType === "technician" ? "technician" : "vendor"}:{" "}
                         {assignType === "technician"
-                          ? {
-                              tech1: "John Smith",
-                              tech2: "Maria Garcia",
-                              tech3: "David Johnson",
-                            }[assignedTo] || assignedTo
-                          : {
-                              vendor1: "TechSupply Inc.",
-                              vendor2: "Hardware Solutions Ltd.",
-                              vendor3: "IT Equipment Partners",
-                            }[assignedTo] || assignedTo}
+                         ? hardwareTechnicians.find((t) => t.id === Number(assignedTo))?.name ||
+                         `Technician ${assignedTo}`
+                       : vendors.find((v) => v.id === Number(assignedTo))?.name || `Vendor ${assignedTo}`}
                       </AlertDescription>
                     </Alert>
                   )}

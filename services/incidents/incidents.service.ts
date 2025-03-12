@@ -370,4 +370,102 @@ export const incidentsService = {
       ]
     }
   },
+  /**
+   * Get all hardware technicians
+   */
+  getHardwareTechnicians: async (): Promise<{ id: number; name: string }[]> => {
+    try {
+      const response = await api.get("/ticket/tech")
+
+      if (response.data && Array.isArray(response.data)) {
+        // Map the API response to the format we need
+        return response.data.map((tech) => ({
+          id: tech.ID,
+          name: tech.FirstName || `Technician ${tech.ID}`,
+        }))
+      }
+
+      console.warn("Unexpected response format from hardware technicians API, using fallback data")
+      return [
+        { id: 70, name: "Hardware Tech 1" },
+        { id: 71, name: "Hardware Tech 2" },
+        { id: 72, name: "Hardware Tech 3" },
+      ]
+    } catch (error) {
+      console.error("Error fetching hardware technicians:", error)
+      // Fallback to mock data if API fails
+      return [
+        { id: 70, name: "Hardware Tech 1" },
+        { id: 71, name: "Hardware Tech 2" },
+        { id: 72, name: "Hardware Tech 3" },
+      ]
+    }
+  },
+
+  /**
+   * Get all vendors
+   */
+  getVendors: async (): Promise<{ id: number; name: string }[]> => {
+    try {
+      const response = await api.get("/ticket/vendor")
+
+      if (response.data && Array.isArray(response.data)) {
+        // Map the API response to the format we need
+        return response.data.map((vendor) => ({
+          id: vendor.IDVendor,
+          name: vendor.Name || `Vendor ${vendor.IDVendor}`,
+        }))
+      }
+
+      console.warn("Unexpected response format from vendors API, using fallback data")
+      return [
+        { id: 1, name: "TechSupply Inc." },
+        { id: 2, name: "Hardware Solutions Ltd." },
+        { id: 3, name: "IT Equipment Partners" },
+      ]
+    } catch (error) {
+      console.error("Error fetching vendors:", error)
+      // Fallback to mock data if API fails
+      return [
+        { id: 1, name: "TechSupply Inc." },
+        { id: 2, name: "Hardware Solutions Ltd." },
+        { id: 3, name: "IT Equipment Partners" },
+      ]
+    }
+  },
+
+  /**
+   * Assign hardware technician or vendor to a ticket
+   */
+  assignHardware: async (codTicket: string, needHardware: number, assignedId: number): Promise<void> => {
+    try {
+      let payload
+
+      if (needHardware === 1) {
+        // Assign hardware technician
+        payload = {
+          CodTicket: codTicket,
+          NeedHardware: 1,
+          AssignedHardwareId: assignedId,
+        }
+      } else if (needHardware === 2) {
+        // Assign vendor
+        payload = {
+          CodTicket: codTicket,
+          NeedHardware: 2,
+          AssignedVendor: assignedId,
+        }
+      } else {
+        throw new Error("Invalid needHardware value. Must be 1 (technician) or 2 (vendor).")
+      }
+
+      await api.post("/ticket/assignHardware", payload)
+      console.log(
+        `Assigned ${needHardware === 1 ? "hardware technician" : "vendor"} ${assignedId} to ticket ${codTicket}`,
+      )
+    } catch (error) {
+      console.error("Error assigning hardware:", error)
+      throw error
+    }
+  },
 }
