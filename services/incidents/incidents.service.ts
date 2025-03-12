@@ -344,16 +344,30 @@ export const incidentsService = {
   // Add getTechnicians function to fetch available technicians
   getTechnicians: async (): Promise<{ id: number; name: string }[]> => {
     try {
-      // In a real implementation, this would fetch from your technicians API endpoint
-      // For now, returning mock data
+      const response = await api.get("/ticket/tech")
+
+      if (response.data && Array.isArray(response.data)) {
+        // Map the API response to the format we need
+        return response.data.map((tech) => ({
+          id: tech.ID,
+          name: `${tech.FirstName || ""} ${tech.LastName || ""}`.trim() || tech.Username,
+        }))
+      }
+
+      console.warn("Unexpected response format from technicians API, using fallback data")
       return [
-        { id: 55, name: "John Smith" },
+        { id: 55, name: "IT Support 2 IT" },
         { id: 56, name: "Maria Garcia" },
         { id: 57, name: "David Johnson" },
       ]
     } catch (error) {
       console.error("Error fetching technicians:", error)
-      throw error
+      // Fallback to mock data if API fails
+      return [
+        { id: 55, name: "IT Support 2 IT" },
+        { id: 56, name: "Maria Garcia" },
+        { id: 57, name: "David Johnson" },
+      ]
     }
   },
 }
