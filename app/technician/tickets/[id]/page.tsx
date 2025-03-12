@@ -447,7 +447,7 @@ export default function TicketDetailPage() {
     )
   }
   const handleRefresh = () => {
-    router.refresh()
+    window.location.reload()
   }
   return (
     <div className="container mx-auto py-6">
