@@ -302,6 +302,9 @@ export default function TicketDetailPage() {
           assignedTo: undefined,
         })
         setNotes([...notes, hardwareNote])
+        setTimeout(() => {
+          window.location.reload()
+        }, 500)
         return
       }
 
@@ -341,6 +344,9 @@ export default function TicketDetailPage() {
       })
       // Clear any previous errors
       setNotes([...notes, hardwareNote])
+      setTimeout(() => {
+        window.location.reload()
+      }, 500)
     } catch (err) {
       console.error("Failed to update hardware requirements:", err)
       setError("Failed to assign hardware. Please try again.")
