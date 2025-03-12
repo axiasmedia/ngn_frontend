@@ -27,6 +27,9 @@ import api from "@/services/api"
 import { userService } from "@/services/user/user.service"
 import { useTicketStatuses } from "@/hooks/useTicketStatuses"
 import { incidentsService } from "@/services/incidents/incidents.service"
+import { useTicketUpdates } from "@/hooks/useTicketUpdates"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { AssignTechnicianDialog } from "@/components/features/technician/assign-technician-dialog"
 
 interface Note {
   id: string
@@ -54,7 +57,7 @@ interface Ticket {
   AssignedUserName?: string
   Availability: string
   CreatedDatatime: string
-  ModDatetime: string | null
+  DueDatetime: string | null
   AssignedHWMS: number | null
   AssignedVendor: number | null
   NeedHardware: number
@@ -86,6 +89,7 @@ export default function TicketDetailPage() {
   const [submittingNote, setSubmittingNote] = useState(false)
 
   const { statuses, getStatusDescription } = useTicketStatuses()
+  const { notes: ticketNotes, loading: notesLoading } = useTicketUpdates(codTicket)
 
   useEffect(() => {
     const fetchTicket = async () => {
@@ -133,18 +137,8 @@ export default function TicketDetailPage() {
             setNewStatus(enrichedTicket.Status)
             setRequiresChange(!!enrichedTicket.NeedHardware)
 
-            // Initialize mock notes if none exist
-            if (!enrichedTicket.notes || enrichedTicket.notes.length === 0) {
-              const initialNotes = [
-                {
-                  id: "1",
-                  text: "Ticket created in the system.",
-                  createdAt: new Date(enrichedTicket.CreatedDatatime).toLocaleString(),
-                  createdBy: creatorName,
-                },
-              ]
-              setNotes(initialNotes)
-            }
+            // Set the notes in the state
+            setNotes(ticketNotes)
           } else {
             setError(`Ticket ${codTicket} not found`)
           }
@@ -160,7 +154,7 @@ export default function TicketDetailPage() {
     }
 
     fetchTicket()
-  }, [codTicket])
+  }, [codTicket, ticketNotes])
 
   const handleAddNote = async () => {
     if (!newNote.trim()) return
@@ -399,6 +393,11 @@ export default function TicketDetailPage() {
                     {getStatusText(ticket.Status)}
                   </span>
                 </Badge>
+                <AssignTechnicianDialog
+                  ticketId={ticket.CodTicket}
+                  currentTechnicianId={ticket.AssignedToUser}
+                  onAssigned={() => router.refresh()}
+                />
                 <Dialog open={isStatusDialogOpen} onOpenChange={setIsStatusDialogOpen}>
                   <DialogTrigger asChild>
                     <Button variant="outline">Change Status</Button>
@@ -516,7 +515,7 @@ export default function TicketDetailPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium">Last Modified</p>
-                  <p className="text-sm text-muted-foreground">{formatDate(ticket.ModDatetime) || "Not modified"}</p>
+                  <p className="text-sm text-muted-foreground">{formatDate(ticket.DueDatetime) || "Not modified"}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium">Availability</p>
@@ -667,7 +666,7 @@ export default function TicketDetailPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="space-y-4">
+            <ScrollArea className="h-[300px] pr-4">
                 {notes.length > 0 ? (
                   notes.map((note) => (
                     <div key={note.id} className="rounded-lg border p-4">
@@ -682,7 +681,7 @@ export default function TicketDetailPage() {
                 ) : (
                   <p className="text-muted-foreground">No notes available for this ticket.</p>
                 )}
-              </div>
+              </ScrollArea>
 
               <Separator />
 

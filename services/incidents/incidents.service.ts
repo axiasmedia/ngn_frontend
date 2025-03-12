@@ -1,5 +1,5 @@
 import api from "@/services/api"
-import type { Incident, IncidentDetail, IncidentNote, CreateTicketPayload, QueueTicket, TicketStatus } from "./types"
+import type { Incident, IncidentDetail, IncidentNote, CreateTicketPayload, QueueTicket, TicketStatus, TicketUpdate } from "./types"
 
 // Function to map status codes to status strings
 const getStatusString = (status: number): string => {
@@ -16,7 +16,20 @@ const getStatusString = (status: number): string => {
       return "Unknown"
   }
 }
-
+// Helper function to safely format dates
+const formatDateSafely = (dateString: string | null | undefined): string => {
+  if (!dateString) return "Not set"
+  try {
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) {
+      return "Date not available"
+    }
+    return date.toLocaleString()
+  } catch (error) {
+    console.error("Error formatting date:", error)
+    return "Date not available"
+  }
+}
 // Remove the hardcoded getUserNameById function and replace it with a real API call
 // Helper function to get user name from API
 const getUserNameById = async (userId: number | string | null | undefined): Promise<string> => {
@@ -63,21 +76,6 @@ export const incidentsService = {
           const ticketData = response.data.find((ticket: any) => ticket.CodTicket === codTicket)
 
           if (ticketData) {
-            // Helper function to safely format dates
-            const formatDateSafely = (dateString: string | null | undefined) => {
-              if (!dateString) return "Not set"
-              try {
-                const date = new Date(dateString)
-                if (isNaN(date.getTime())) {
-                  return "Date not available"
-                }
-                return date.toLocaleString()
-              } catch (error) {
-                console.error("Error formatting date:", error)
-                return "Date not available"
-              }
-            }
-
             // Get the creator's name from the API
             const creatorName = await getUserNameById(ticketData.CreatedBy)
             const assigneeName = ticketData.AssignedToUser
@@ -107,7 +105,7 @@ export const incidentsService = {
                 },
               ],
               createdAt: ticketData.CreatedDatatime,
-              updatedAt: ticketData.ModDatetime,
+              updatedAt: ticketData.DueDatetime,
             }
           }
         }
@@ -117,22 +115,6 @@ export const incidentsService = {
 
         if (response.data) {
           const ticketData = response.data
-
-          // Helper function to safely format dates
-          const formatDateSafely = (dateString: string | null | undefined) => {
-            if (!dateString) return "Not set"
-            try {
-              const date = new Date(dateString)
-              if (isNaN(date.getTime())) {
-                return "Date not available"
-              }
-              return date.toLocaleString()
-            } catch (error) {
-              console.error("Error formatting date:", error)
-              return "Date not available"
-            }
-          }
-
           // Get the creator's name from the API
           const creatorName = await getUserNameById(ticketData.CreatedBy)
           const assigneeName = ticketData.AssignedToUser
@@ -162,7 +144,7 @@ export const incidentsService = {
               },
             ],
             createdAt: ticketData.CreatedDatatime,
-            updatedAt: ticketData.ModDatetime,
+            updatedAt: ticketData.DueDatetime,
           }
         }
       }
@@ -263,7 +245,7 @@ export const incidentsService = {
       AssignedToUser: null,
       Availability: ticket.Availability,
       CreatedDatatime: new Date().toISOString(),
-      ModDatetime: null,
+      DueDatetime: null,
       AssignedHWMS: null,
       AssignedVendor: null,
       NeedHardware: 0,
@@ -455,5 +437,124 @@ export const incidentsService = {
       throw error
     }
   },
-}
 
+
+  /**
+   * Get ticket updates history
+   */
+  getTicketUpdates: async (codTicket: string): Promise<TicketUpdate[]> => {
+    try {
+      const response = await api.get(`/ticket/by-ticket/${codTicket}`)
+      return response.data || []
+    } catch (error) {
+      console.error("Error fetching ticket updates:", error)
+      return []
+    }
+  },
+
+  /**
+   * Convert ticket updates to notes format
+   */
+  convertUpdatesToNotes: async (updates: TicketUpdate[]): Promise<IncidentNote[]> => {
+    console.log("Processing updates:", updates)
+    const notes: IncidentNote[] = []
+
+    // Get all status descriptions for mapping
+    let statusMap: Record<number, string> = {}
+    try {
+      const statuses = await incidentsService.getTicketStatuses()
+      statusMap = statuses.reduce(
+        (map, status) => {
+          map[status.IDStatus] = status.Description
+          return map
+        },
+        {} as Record<number, string>,
+      )
+    } catch (error) {
+      console.error("Error fetching status descriptions:", error)
+      // Fallback status map
+      statusMap = {
+        1: "Open",
+        2: "In Progress",
+        3: "Resolved",
+        4: "Closed",
+        5: "Pending",
+        6: "Cancelled",
+      }
+    }
+
+    for (const update of updates) {
+      try {
+        // Get the agent name who created the update
+        let agentName = "Tech Support Team"
+        if (update.CreatedByAgent) {
+          try {
+            agentName = await getUserNameById(update.CreatedByAgent)
+          } catch (err) {
+            console.warn(`Could not get name for agent ${update.CreatedByAgent}:`, err)
+          }
+        }
+        // Format the note text based on the update type
+        let noteText = update.Comments || ""
+
+        // If it's a status change and not already formatted as such
+        if (update.Status && !noteText.toLowerCase().includes("status changed")) {
+          const statusDescription = statusMap[update.Status] || `Status ${update.Status}`
+
+          // For ticket creation, use a simpler format
+          if (noteText.toLowerCase().includes("ticket created")) {
+            noteText = `${noteText} (Status: ${statusDescription})`
+          } else {
+            // For status updates, use a more descriptive format
+            noteText = `Status changed to "${statusDescription}": ${noteText}`
+          }
+        }
+
+        notes.push({
+          id: update.IDAuton.toString(),
+          text: noteText,
+          createdAt: formatDateSafely(update.CreatedDatatime),
+          createdBy: agentName || "System",
+        })
+      } catch (error) {
+        console.error("Error converting update to note:", error)
+      }
+    }
+
+    return notes
+  },
+
+  /**
+   * Assign a technician to a ticket
+   */
+  assignTechnician: async (codTicket: string, technicianId: number): Promise<void> => {
+    try {
+      const payload = {
+        CodTicket: codTicket,
+        AssignedTo: technicianId,
+      }
+
+      await api.put("/ticket/assign", payload)
+      console.log(`Assigned technician ${technicianId} to ticket ${codTicket}`)
+    } catch (error) {
+      console.error("Error assigning technician:", error)
+      throw error
+    }
+  },
+
+  // Add getTechnicians function to fetch available technicians
+  getTechnicians: async (): Promise<{ id: number; name: string }[]> => {
+    try {
+      // In a real implementation, this would fetch from your technicians API endpoint
+      // For now, returning mock data
+      return [
+        { id: 55, name: "John Smith" },
+        { id: 56, name: "Maria Garcia" },
+        { id: 57, name: "David Johnson" },
+      ]
+    } catch (error) {
+      console.error("Error fetching technicians:", error)
+      throw error
+    }
+  },
+}

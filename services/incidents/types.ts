@@ -13,11 +13,11 @@ export interface Incident {
   Location: string | null
   AssignedToUser: string | null
   Availability: string
-  CreatedDatatime: string // Updated field name to match API
-  ModDatetime: string | null // Updated field name to match API
-  AssignedHWMS: string | null // Updated field name to match API
+  CreatedDatatime: string 
+  DueDatetime: string | null 
+  AssignedHWMS: string | null 
   AssignedVendor: string | null
-  NeedHardware: number // Updated field name to match API
+  NeedHardware: number 
   IssueType: string | null
   SubIssueType: string | null
 }
@@ -42,6 +42,17 @@ export function getStatusString(status: number): { label: string; value: number 
   }
 }
 
+// Added a new interface for ticket updates
+export interface TicketUpdate {
+  IDAuton: number
+  CodTicket: string
+  Comments: string
+  Status: number
+  CreatedByAgent: number
+  CreatedDatatime: string
+  CodVendor: string | null
+}
+
 export interface IncidentDetail {
   id: string
   title: string
@@ -61,6 +72,7 @@ export interface IncidentDetail {
   notes: IncidentNote[]
   createdAt: string
   updatedAt: string
+  updates?: TicketUpdate[]
 }
 
 export interface IncidentNote {
@@ -82,6 +94,12 @@ export interface CreateTicketPayload {
   ClientID: number
   AffectedProduct: number
   AffectedUsers: number[]
+  Location?: string | null
+  AssignedToUser?: number | null
+  NeedHardware?: number
+  IssueType?: string | null
+  SubIssueType?: string | null
+  Priority?: string
   attachments?: File[]
 }
 
@@ -114,7 +132,7 @@ export interface QueueTicket {
   AssignedToUser: number | null
   Availability: string
   CreatedDatatime: string
-  ModDatetime: string | null
+  DueDatetime: string | null
   AssignedHWMS: number | null
   AssignedVendor: number | null
   NeedHardware: number
@@ -136,7 +154,7 @@ export interface TicketDetail {
   Comments: string
   Status: number
   CreatedByAgent: number
-  CreatedDatetime: string
+  CreatedDatatime: string
   CodVendor: string | null
   notes?: TicketNote[]
   createdByName?: string

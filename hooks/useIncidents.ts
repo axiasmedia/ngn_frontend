@@ -82,34 +82,6 @@ export function useIncidentDetails(id: string) {
     }
   }
 
-  const updateStatus = async (status: string, note: string): Promise<boolean> => {
-    try {
-      await incidentsService.updateStatus(id, status, note)
-
-      // Add the status change note
-      const statusChangeNote = {
-        id: Date.now().toString(),
-        text: `Status changed from "${incident?.status}" to "${status}": ${note}`,
-        createdAt: new Date().toLocaleString(),
-        createdBy: "Tech Support Team",
-      }
-
-      setIncident((prev) => {
-        if (!prev) return prev
-        return {
-          ...prev,
-          status,
-          notes: [...prev.notes, statusChangeNote],
-        }
-      })
-
-      return true
-    } catch (err) {
-      setError("Failed to update status")
-      console.error(err)
-      return false
-    }
-  }
 
   return {
     incident,
@@ -117,7 +89,7 @@ export function useIncidentDetails(id: string) {
     error,
     refetch: fetchIncident,
     addNote,
-    updateStatus,
+    
   }
 }
 

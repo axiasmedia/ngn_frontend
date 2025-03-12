@@ -6,13 +6,16 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, AlertCircle, Clock, CheckCircle, Loader2 } from "lucide-react"
+import { ArrowLeft, AlertCircle, Clock, CheckCircle, Loader2, XCircle } from "lucide-react"
 import Link from "next/link"
 import { incidentsService } from "@/services/incidents/incidents.service"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
 import api from "@/services/api"
 import { useAuth } from "@/components/auth/auth-provider"
+import { useTicketStatuses } from "@/hooks/useTicketStatuses"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { useTicketUpdates } from "@/hooks/useTicketUpdates"
 
 export default function IncidentDetailsPage() {
   const params = useParams()
@@ -25,6 +28,16 @@ export default function IncidentDetailsPage() {
   const [error, setError] = useState<string | null>(null)
   const [newNote, setNewNote] = useState("")
   const [submittingNote, setSubmittingNote] = useState(false)
+  const [notes, setNotes] = useState<any[]>([])
+  const { getStatusDescription } = useTicketStatuses()
+
+  // Get ticket updates
+  const { notes: ticketNotes, loading: notesLoading } = useTicketUpdates(codTicket)
+
+  useEffect(() => {
+    // Set the notes in the state
+    setNotes(ticketNotes)
+  }, [ticketNotes])
 
   useEffect(() => {
     // Function to safely format date strings
@@ -114,7 +127,7 @@ export default function IncidentDetailsPage() {
               codTicket: ticketData.CodTicket,
               title: ticketData.Title || "No Title",
               description: ticketData.Description || "No description available",
-              status: getStatusString(ticketData.Status) || "Unknown",
+              status: ticketData.Status || "Unknown",
               priority: ticketData.Priority || "Medium",
               createdBy: creatorName, // Use name from API
               createdById: ticketData.CreatedBy, // Keep the ID for reference
@@ -125,7 +138,7 @@ export default function IncidentDetailsPage() {
               contract: "Standard Support",
               notes: ticketData.Notes || [],
               createdAt: ticketData.CreatedDatatime,
-              updatedAt: ticketData.ModDatetime,
+              updatedAt: ticketData.DueDatetime,
             })
           } else {
             setError(`Ticket ${codTicket} not found`)
@@ -176,28 +189,46 @@ export default function IncidentDetailsPage() {
   }
 
   // Function to get status icon
-  const getStatusIcon = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "open":
-        return <AlertCircle className="h-5 w-5 text-red-500" />
-      case "in progress":
+  const getStatusIcon = (status: string | number) => {
+    // Convert string status to number if needed
+    const statusId = typeof status === "string" ? Number.parseInt(status) : typeof status === "number" ? status : 0
+
+    switch (statusId) {
+      case 1:
+        return <AlertCircle className="h-5 w-5 text-blue-500" />
+      case 2:
         return <Clock className="h-5 w-5 text-amber-500" />
-      case "resolved":
+      case 3:
         return <CheckCircle className="h-5 w-5 text-green-500" />
+      case 4:
+        return <CheckCircle className="h-5 w-5 text-gray-500" />
+      case 5:
+        return <Clock className="h-5 w-5 text-purple-500" />
+      case 6:
+        return <XCircle className="h-5 w-5 text-red-500" />
       default:
         return <AlertCircle className="h-5 w-5" />
     }
   }
 
   // Function to get status color
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "open":
-        return "bg-red-100 text-red-800"
-      case "in progress":
+  const getStatusColor = (status: string | number) => {
+    // Convert string status to number if needed
+    const statusId = typeof status === "string" ? Number.parseInt(status) : typeof status === "number" ? status : 0
+
+    switch (statusId) {
+      case 1:
+        return "bg-blue-100 text-blue-800"
+      case 2:
         return "bg-amber-100 text-amber-800"
-      case "resolved":
+      case 3:
         return "bg-green-100 text-green-800"
+      case 4:
+        return "bg-gray-100 text-gray-800"
+      case 5:
+        return "bg-purple-100 text-purple-800"
+      case 6:
+        return "bg-red-100 text-red-800"
       default:
         return "bg-gray-100 text-gray-800"
     }
@@ -260,16 +291,16 @@ export default function IncidentDetailsPage() {
       </div>
 
       <div className="grid gap-6">
-        <Card>
+        <Card className="shadow-sm">
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <CardTitle className="text-xl">Ticket #{incident.codTicket}</CardTitle>
               <div className="flex items-center gap-3">
                 <Badge className={getPriorityColor(incident.priority)}>{incident.priority}</Badge>
                 <Badge className={getStatusColor(incident.status)}>
                   <span className="flex items-center gap-1">
                     {getStatusIcon(incident.status)}
-                    {incident.status}
+                    {typeof incident.status === "number" ? getStatusDescription(incident.status) : incident.status}
                   </span>
                 </Badge>
               </div>
@@ -308,28 +339,30 @@ export default function IncidentDetailsPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="shadow-sm">
           <CardHeader>
             <CardTitle>Notes & Activity</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {incident.notes && incident.notes.length > 0 ? (
-                <div className="space-y-4">
-                  {incident.notes.map((note: any) => (
-                    <div key={note.id} className="rounded-lg border p-4">
-                      <p className="text-sm">{note.text}</p>
-                      <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>{note.createdBy}</span>
-                        <span>•</span>
-                        <span>{note.createdAt}</span>
+              <ScrollArea className="h-[300px] pr-4">
+                {notes && notes.length > 0 ? (
+                  <div className="space-y-4">
+                   {notes.map((note: any) => (
+                      <div key={note.id} className="rounded-lg border p-4 hover:shadow-sm transition-shadow">
+                        <p className="text-sm">{note.text}</p>
+                        <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>{note.createdBy}</span>
+                          <span>•</span>
+                          <span>{note.createdAt}</span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-muted-foreground text-sm">No notes or activity yet.</p>
-              )}
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-sm">No notes or activity yet.</p>
+                )}
+              </ScrollArea>
 
               <Separator className="my-4" />
 
