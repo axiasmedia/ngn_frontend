@@ -446,7 +446,9 @@ export default function TicketDetailPage() {
       </div>
     )
   }
-
+  const handleRefresh = () => {
+    router.refresh()
+  }
   return (
     <div className="container mx-auto py-6">
       <div className="mb-6">
@@ -474,7 +476,7 @@ export default function TicketDetailPage() {
                 <AssignTechnicianDialog
                   ticketId={ticket.CodTicket}
                   currentTechnicianId={ticket.AssignedToUser}
-                  onAssigned={() => router.refresh()}
+                  onAssigned={handleRefresh}
                 />
                 <Dialog open={isStatusDialogOpen} onOpenChange={setIsStatusDialogOpen}>
                   <DialogTrigger asChild>
