@@ -50,6 +50,7 @@ import { useTicketStatuses } from "@/hooks/useTicketStatuses"
 import { incidentsService } from "@/services/incidents/incidents.service"
 import { useTicketUpdates } from "@/hooks/useTicketUpdates"
 import { AssignTechnicianDialog } from "@/components/features/technician/assign-technician-dialog"
+import { productService } from "@/services/products/products.service"
 
 interface Note {
   id: string
@@ -110,8 +111,10 @@ export default function TicketDetailPage() {
   const [hardwareTechnicians, setHardwareTechnicians] = useState<{ id: number; name: string }[]>([])
   const [vendors, setVendors] = useState<{ id: number; name: string }[]>([])
   const [loadingHardwareOptions, setLoadingHardwareOptions] = useState(false)
+  const [productName, setProductName] = useState<string>("")
   const { statuses, getStatusDescription } = useTicketStatuses()
   const { notes: ticketNotes, loading: notesLoading } = useTicketUpdates(codTicket)
+
 
   useEffect(() => {
     const fetchTicket = async () => {
@@ -155,6 +158,15 @@ export default function TicketDetailPage() {
             }
 
             setTicket(enrichedTicket)
+            if(ticketData.AffectedProduct){
+              try{
+                const name = await productService.getProductName(ticketData.AffectedProduct)
+                setProductName(name)
+              }catch(err){
+                console.error("Error fecthing product name", err)
+                setProductName(`Unkown Product (ID: ${ticketData.AffectedProduct})`)
+              }
+            }
             setNotes(enrichedTicket.notes || [])
             setNewStatus(enrichedTicket.Status)
             setRequiresChange(!!enrichedTicket.NeedHardware)
@@ -659,7 +671,9 @@ export default function TicketDetailPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium">Affected Product</p>
-                  <p className="text-sm text-muted-foreground">Product ID: {ticket.AffectedProduct}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {productName || `Loading... (ID: ${ticket.AffectedProduct})`}
+                  </p>
                 </div>
                 {ticket.IssueType && (
                   <div>
