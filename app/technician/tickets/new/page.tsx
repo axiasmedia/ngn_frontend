@@ -467,23 +467,6 @@ export default function NewTicketPage() {
                 <Label>Availability</Label>
                 <DateTimePicker date={availability} setDate={setAvailability} />
               </div>
-
-              {/* Hardware Needs */}
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="needs-hardware"
-                  checked={needsHardware}
-                  onChange={(e) => setNeedsHardware(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                />
-                 <label
-                  htmlFor="needs-hardware"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  This ticket requires hardware or software change
-                </label>
-              </div>
             </div>
           </CardContent>
         </Card>
