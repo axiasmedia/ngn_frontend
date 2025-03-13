@@ -158,7 +158,6 @@ export default function NewTicketPage() {
         Location: location || null,
         AssignedToUser: assignedTo ? Number(assignedTo) : null,
         Availability: availability ? availability.toISOString() : new Date().toISOString(),
-        NeedHardware: needsHardware ? 1 : 0,
         IssueType: issueType || null,
         SubIssueType: subIssueType || null,
         // Include affected users array (empty for technician tickets)
