@@ -78,22 +78,6 @@ export default function IncidentDetailsPage() {
       }
     }
 
-    // Function to get status string from number
-    const getStatusString = (status: number) => {
-      switch (status) {
-        case 1:
-          return "Open"
-        case 2:
-          return "In Progress"
-        case 3:
-          return "Resolved"
-        case 4:
-          return "Closed"
-        default:
-          return "Unknown"
-      }
-    }
-
     // Update the fetchIncident function to use the API directly for user names
     const fetchIncident = async () => {
       if (!userInfo?.id) {
