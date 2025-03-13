@@ -390,7 +390,7 @@ export const incidentsService = {
    */
   getHardwareTechnicians: async (): Promise<{ id: number; name: string }[]> => {
     try {
-      const response = await api.get("/ticket/tech")
+      const response = await api.get("/ticket/tech-hardware")
 
       if (response.data && Array.isArray(response.data)) {
         // Map the API response to the format we need
