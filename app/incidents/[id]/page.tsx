@@ -1,12 +1,34 @@
 "use client"
 
+import { ScrollArea } from "@/components/ui/scroll-area"
+
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, AlertCircle, Clock, CheckCircle, Loader2, XCircle } from "lucide-react"
+import {
+  ArrowLeft,
+  AlertCircle,
+  Clock,
+  CheckCircle,
+  Loader2,
+  XCircle,
+  UserCheck,
+  ArrowUp,
+  RefreshCw,
+  MapPin,
+  Package,
+  UserPlus,
+  RefreshCcw,
+  Calendar,
+  Building,
+  MessageSquare,
+  PenToolIcon as Tool,
+  User,
+  HelpCircle,
+} from "lucide-react"
 import Link from "next/link"
 import { incidentsService } from "@/services/incidents/incidents.service"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -14,7 +36,6 @@ import { Separator } from "@/components/ui/separator"
 import api from "@/services/api"
 import { useAuth } from "@/components/auth/auth-provider"
 import { useTicketStatuses } from "@/hooks/useTicketStatuses"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { useTicketUpdates } from "@/hooks/useTicketUpdates"
 
 export default function IncidentDetailsPage() {
@@ -29,6 +50,7 @@ export default function IncidentDetailsPage() {
   const [newNote, setNewNote] = useState("")
   const [submittingNote, setSubmittingNote] = useState(false)
   const [notes, setNotes] = useState<any[]>([])
+
   const { getStatusDescription } = useTicketStatuses()
 
   // Get ticket updates
@@ -138,7 +160,7 @@ export default function IncidentDetailsPage() {
               contract: "Standard Support",
               notes: ticketData.Notes || [],
               createdAt: ticketData.CreatedDatatime,
-              updatedAt: ticketData.DueDatetime,
+              updatedAt: ticketData.ModDatetime,
             })
           } else {
             setError(`Ticket ${codTicket} not found`)
@@ -188,48 +210,93 @@ export default function IncidentDetailsPage() {
     }
   }
 
-  // Function to get status icon
+  // Update the getStatusIcon function to use the hook
   const getStatusIcon = (status: string | number) => {
     // Convert string status to number if needed
     const statusId = typeof status === "string" ? Number.parseInt(status) : typeof status === "number" ? status : 0
+    const statusDesc = typeof status === "number" ? getStatusDescription(status) : status
 
-    switch (statusId) {
-      case 1:
+    // Map status descriptions to icons
+    switch (statusDesc.toLowerCase()) {
+      case "new":
         return <AlertCircle className="h-5 w-5 text-blue-500" />
-      case 2:
+      case "assigned":
+        return <UserCheck className="h-5 w-5 text-indigo-500" />
+      case "in progress":
         return <Clock className="h-5 w-5 text-amber-500" />
-      case 3:
+      case "completed":
         return <CheckCircle className="h-5 w-5 text-green-500" />
-      case 4:
+      case "waiting for customer":
+        return <Clock className="h-5 w-5 text-purple-500" /> // Using Clock as fallback
+      case "escalated":
+        return <ArrowUp className="h-5 w-5 text-red-500" />
+      case "reopened":
+        return <RefreshCw className="h-5 w-5 text-orange-500" />
+      case "on-site visit":
+        return <MapPin className="h-5 w-5 text-cyan-500" />
+      case "awaiting shipment":
+        return <Package className="h-5 w-5 text-yellow-500" />
+      case "on boarding":
+        return <UserPlus className="h-5 w-5 text-teal-500" />
+      case "awaiting replacement":
+        return <RefreshCcw className="h-5 w-5 text-rose-500" /> // Using RefreshCcw as replacement icon
+      case "scheduled":
+        return <Calendar className="h-5 w-5 text-violet-500" />
+      case "waiting for vendor response":
+        return <Building className="h-5 w-5 text-slate-500" />
+      case "response received":
+        return <MessageSquare className="h-5 w-5 text-emerald-500" />
+      case "on-site progress":
+        return <Tool className="h-5 w-5 text-sky-500" />
+      case "user response":
+        return <User className="h-5 w-5 text-fuchsia-500" />
+      // Legacy status mappings
+      case "open":
+        return <AlertCircle className="h-5 w-5 text-blue-500" />
+      case "resolved":
+        return <CheckCircle className="h-5 w-5 text-green-500" />
+      case "closed":
         return <CheckCircle className="h-5 w-5 text-gray-500" />
-      case 5:
+      case "pending":
         return <Clock className="h-5 w-5 text-purple-500" />
-      case 6:
+      case "cancelled":
         return <XCircle className="h-5 w-5 text-red-500" />
       default:
-        return <AlertCircle className="h-5 w-5" />
+        return <HelpCircle className="h-5 w-5" />
     }
   }
 
-  // Function to get status color
+  // Update the getStatusColor function to use the hook
   const getStatusColor = (status: string | number) => {
     // Convert string status to number if needed
     const statusId = typeof status === "string" ? Number.parseInt(status) : typeof status === "number" ? status : 0
+    const statusDesc = typeof status === "number" ? getStatusDescription(status) : status
 
-    switch (statusId) {
-      case 1:
+    // Map status descriptions to colors
+    switch (statusDesc.toLowerCase()) {
+      case "open":
         return "bg-blue-100 text-blue-800"
-      case 2:
+      case "in progress":
         return "bg-amber-100 text-amber-800"
-      case 3:
+      case "resolved":
         return "bg-green-100 text-green-800"
-      case 4:
+      case "closed":
         return "bg-gray-100 text-gray-800"
-      case 5:
+      case "pending":
         return "bg-purple-100 text-purple-800"
-      case 6:
+      case "cancelled":
         return "bg-red-100 text-red-800"
       default:
+        // Try to determine color based on keywords in the status description
+        if (statusDesc.toLowerCase().includes("progress") || statusDesc.toLowerCase().includes("pending")) {
+          return "bg-amber-100 text-amber-800"
+        } else if (statusDesc.toLowerCase().includes("resolv") || statusDesc.toLowerCase().includes("complete")) {
+          return "bg-green-100 text-green-800"
+        } else if (statusDesc.toLowerCase().includes("cancel")) {
+          return "bg-red-100 text-red-800"
+        } else if (statusDesc.toLowerCase().includes("close")) {
+          return "bg-gray-100 text-gray-800"
+        }
         return "bg-gray-100 text-gray-800"
     }
   }
@@ -348,7 +415,7 @@ export default function IncidentDetailsPage() {
               <ScrollArea className="h-[300px] pr-4">
                 {notes && notes.length > 0 ? (
                   <div className="space-y-4">
-                   {notes.map((note: any) => (
+                    {notes.map((note: any) => (
                       <div key={note.id} className="rounded-lg border p-4 hover:shadow-sm transition-shadow">
                         <p className="text-sm">{note.text}</p>
                         <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">

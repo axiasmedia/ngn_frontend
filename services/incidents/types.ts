@@ -144,7 +144,7 @@ export interface QueueTicket {
 
 // Add this new interface for ticket statuses
 export interface TicketStatus {
-  IDStatus: number
+  IDStatusT: number
   Description: string
 }
 

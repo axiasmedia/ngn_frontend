@@ -1,21 +1,6 @@
 import api from "@/services/api"
 import type { Incident, IncidentDetail, IncidentNote, CreateTicketPayload, QueueTicket, TicketStatus, TicketUpdate } from "./types"
 
-// Function to map status codes to status strings
-const getStatusString = (status: number): string => {
-  switch (status) {
-    case 1:
-      return "Open"
-    case 2:
-      return "In Progress"
-    case 3:
-      return "Resolved"
-    case 4:
-      return "Closed"
-    default:
-      return "Unknown"
-  }
-}
 // Helper function to safely format dates
 const formatDateSafely = (dateString: string | null | undefined): string => {
   if (!dateString) return "Not set"
@@ -61,196 +46,6 @@ export const incidentsService = {
     } catch (error) {
       console.error("Error fetching incidents:", error)
       throw error
-    }
-  },
-
-  // Update getIncidentById to use the async getUserNameById function
-  getIncidentById: async (codTicket: string, userId?: number): Promise<IncidentDetail> => {
-    try {
-      // If we have a userId, use the same endpoint as the list page
-      if (userId) {
-        const response = await api.get(`/ticket/by-user/${userId}`)
-
-        if (response.data && Array.isArray(response.data)) {
-          // Find the specific ticket with matching CodTicket
-          const ticketData = response.data.find((ticket: any) => ticket.CodTicket === codTicket)
-
-          if (ticketData) {
-            // Get the creator's name from the API
-            const creatorName = await getUserNameById(ticketData.CreatedBy)
-            const assigneeName = ticketData.AssignedToUser
-              ? await getUserNameById(ticketData.AssignedToUser)
-              : "Unassigned"
-
-            // Format the API response to match our IncidentDetail interface
-            return {
-              id: codTicket,
-              title: ticketData.Title || "No Title",
-              description: ticketData.Description || "No description available",
-              account: "Chrysalis Health",
-              contract: "Chrysalis Support",
-              owner: "User",
-              openDate: formatDateSafely(ticketData.CreatedDatatime),
-              dueDate: formatDateSafely(ticketData.DueDate),
-              createdBy: creatorName, // Use the name from API
-              assignee: assigneeName, // Use the name from API
-              priority: ticketData.Priority || "Medium",
-              status: getStatusString(ticketData.Status) || "Unknown",
-              notes: ticketData.Notes || [
-                {
-                  id: "system-note",
-                  text: "No notes available for this ticket.",
-                  createdAt: new Date().toLocaleString(),
-                  createdBy: "System",
-                },
-              ],
-              createdAt: ticketData.CreatedDatatime,
-              updatedAt: ticketData.DueDatetime,
-            }
-          }
-        }
-      } else {
-        // Fallback to the specific ticket endpoint if no userId is provided
-        const response = await api.get(`/ticket/by-ticket/${codTicket}`)
-
-        if (response.data) {
-          const ticketData = response.data
-          // Get the creator's name from the API
-          const creatorName = await getUserNameById(ticketData.CreatedBy)
-          const assigneeName = ticketData.AssignedToUser
-            ? await getUserNameById(ticketData.AssignedToUser)
-            : "Unassigned"
-
-          // Format the API response to match our IncidentDetail interface
-          return {
-            id: codTicket,
-            title: ticketData.Title || "No Title",
-            description: ticketData.Description || "No description available",
-            account: "Chrysalis Health",
-            contract: "Chrysalis Support",
-            owner: "User",
-            openDate: formatDateSafely(ticketData.CreatedDatatime),
-            dueDate: formatDateSafely(ticketData.DueDate),
-            createdBy: creatorName, // Use the name from API
-            assignee: assigneeName, // Use the name from API
-            priority: ticketData.Priority || "Medium",
-            status: getStatusString(ticketData.Status) || "Unknown",
-            notes: ticketData.Notes || [
-              {
-                id: "system-note",
-                text: "No notes available for this ticket.",
-                createdAt: new Date().toLocaleString(),
-                createdBy: "System",
-              },
-            ],
-            createdAt: ticketData.CreatedDatatime,
-            updatedAt: ticketData.DueDatetime,
-          }
-        }
-      }
-      // Fallback to mock data if API response is empty or ticket not found
-      console.log("API returned empty data or ticket not found, using mock data")
-      return {
-        id: codTicket,
-        title: "Email not working",
-        description: "User cannot access their email account. The system shows an error message when trying to log in.",
-        account: "Chrysalis Health",
-        contract: "Chrysalis Support",
-        owner: "John Smith",
-        openDate: "25/01/2025 05:24 PM",
-        dueDate: "27/01/2025 05:24 PM",
-        createdBy: "Sarah Johnson",
-        assignee: "Tech Support Team",
-        priority: "High",
-        status: "Open",
-        requiresChange: false,
-        assignType: "technician",
-        assignedTo: "",
-        notes: [
-          {
-            id: "1",
-            text: "Initial investigation started. Checking email server logs.",
-            createdAt: "25/01/2025 05:30 PM",
-            createdBy: "Tech Support Team",
-          },
-          {
-            id: "2",
-            text: "Found issue with account permissions. Working on fix.",
-            createdAt: "25/01/2025 06:15 PM",
-            createdBy: "Tech Support Team",
-          },
-        ],
-        createdAt: "2025-01-25T17:24:00Z",
-        updatedAt: "2025-01-25T18:15:00Z",
-      }
-    } catch (error) {
-      console.error("Error fetching incident details:", error)
-
-      // Return mock data as fallback
-      return {
-        id: codTicket,
-        title: "Email not working",
-        description: "User cannot access their email account. The system shows an error message when trying to log in.",
-        account: "Chrysalis Health",
-        contract: "Chrysalis Support",
-        owner: "John Smith",
-        openDate: "25/01/2025 05:24 PM",
-        dueDate: "27/01/2025 05:24 PM",
-        createdBy: "Sarah Johnson",
-        assignee: "Tech Support Team",
-        priority: "High",
-        status: "Open",
-        requiresChange: false,
-        assignType: "technician",
-        assignedTo: "",
-        notes: [
-          {
-            id: "1",
-            text: "Initial investigation started. Checking email server logs.",
-            createdAt: "25/01/2025 05:30 PM",
-            createdBy: "Tech Support Team",
-          },
-          {
-            id: "2",
-            text: "Found issue with account permissions. Working on fix.",
-            createdAt: "25/01/2025 06:15 PM",
-            createdBy: "Tech Support Team",
-          },
-        ],
-        createdAt: "2025-01-25T17:24:00Z",
-        updatedAt: "2025-01-25T18:15:00Z",
-      }
-    }
-  },
-
-  /**
-   * Create a new incident (deprecated - use createTicket instead)
-   */
-  createIncident: async (ticket: CreateTicketPayload): Promise<Incident> => {
-    console.warn("createIncident is deprecated, use createTicket instead")
-    // Mock response for now
-    return {
-      IDTicket: Math.floor(Math.random() * 1000),
-      CodTicket: "INC-" + Math.floor(Math.random() * 1000),
-      ClientID: ticket.ClientID,
-      Title: ticket.Title,
-      Description: ticket.Description,
-      Status: ticket.Status,
-      Type: ticket.Type,
-      AffectedProduct: ticket.AffectedProduct,
-      Priority: "medium",
-      CreatedBy: ticket.CreatedBy,
-      ContactMethod: ticket.ContactMethod,
-      Location: null,
-      AssignedToUser: null,
-      Availability: ticket.Availability,
-      CreatedDatatime: new Date().toISOString(),
-      DueDatetime: null,
-      AssignedHWMS: null,
-      AssignedVendor: null,
-      NeedHardware: 0,
-      IssueType: null,
-      SubIssueType: null,
     }
   },
 
@@ -374,8 +169,8 @@ export const incidentsService = {
           if (typeof item === "object" && item !== null) {
             // Try to find ID and Description fields with various possible names
             const id =
-              item.IDStatus !== undefined
-                ? item.IDStatus
+              item.IDStatusT !== undefined
+                ? item.IDStatusT
                 : item.id !== undefined
                   ? item.id
                   : item.ID !== undefined
@@ -392,14 +187,14 @@ export const incidentsService = {
                     : `Status ${index + 1}`
 
             return {
-              IDStatus: id,
+              IDStatusT: id,
               Description: description,
             }
           }
 
           // If item is not an object, create a default status
           return {
-            IDStatus: index + 1,
+            IDStatusT: index + 1,
             Description: `Status ${index + 1}`,
           }
         })
@@ -408,19 +203,23 @@ export const incidentsService = {
       // Fallback to mock data if response is not as expected
       console.warn("Unexpected response format from ticket status API, using fallback data")
       return [
-        { IDStatus: 1, Description: "Open" },
-        { IDStatus: 2, Description: "In Progress" },
-        { IDStatus: 3, Description: "Resolved" },
-        { IDStatus: 4, Description: "Closed" },
+        { IDStatusT: 1, Description: "Open" },
+        { IDStatusT: 2, Description: "In Progress" },
+        { IDStatusT: 3, Description: "Resolved" },
+        { IDStatusT: 4, Description: "Closed" },
+        { IDStatusT: 5, Description: "Pending" },
+        { IDStatusT: 6, Description: "Cancelled" },
       ]
     } catch (error) {
       console.error("Error fetching ticket statuses:", error)
       // Fallback to mock data if API fails
       return [
-        { IDStatus: 1, Description: "Open" },
-        { IDStatus: 2, Description: "In Progress" },
-        { IDStatus: 3, Description: "Resolved" },
-        { IDStatus: 4, Description: "Closed" },
+        { IDStatusT: 1, Description: "Open" },
+        { IDStatusT: 2, Description: "In Progress" },
+        { IDStatusT: 3, Description: "Resolved" },
+        { IDStatusT: 4, Description: "Closed" },
+        { IDStatusT: 5, Description: "Pending" },
+        { IDStatusT: 6, Description: "Cancelled" },
       ]
     }
   },
@@ -465,7 +264,7 @@ export const incidentsService = {
       const statuses = await incidentsService.getTicketStatuses()
       statusMap = statuses.reduce(
         (map, status) => {
-          map[status.IDStatus] = status.Description
+          map[status.IDStatusT] = status.Description
           return map
         },
         {} as Record<number, string>,
@@ -545,15 +344,127 @@ export const incidentsService = {
   // Add getTechnicians function to fetch available technicians
   getTechnicians: async (): Promise<{ id: number; name: string }[]> => {
     try {
-      // In a real implementation, this would fetch from your technicians API endpoint
-      // For now, returning mock data
+      const response = await api.get("/ticket/tech")
+
+      if (response.data && Array.isArray(response.data)) {
+        // Map the API response to the format we need
+        return response.data.map((tech) => ({
+          id: tech.ID,
+          name: `${tech.FirstName || ""} ${tech.LastName || ""}`.trim() || tech.Username,
+        }))
+      }
+
+      console.warn("Unexpected response format from technicians API, using fallback data")
       return [
-        { id: 55, name: "John Smith" },
+        { id: 55, name: "IT Support 2 IT" },
         { id: 56, name: "Maria Garcia" },
         { id: 57, name: "David Johnson" },
       ]
     } catch (error) {
       console.error("Error fetching technicians:", error)
+      // Fallback to mock data if API fails
+      return [
+        { id: 55, name: "IT Support 2 IT" },
+        { id: 56, name: "Maria Garcia" },
+        { id: 57, name: "David Johnson" },
+      ]
+    }
+  },
+  /**
+   * Get all hardware technicians
+   */
+  getHardwareTechnicians: async (): Promise<{ id: number; name: string }[]> => {
+    try {
+      const response = await api.get("/ticket/tech")
+
+      if (response.data && Array.isArray(response.data)) {
+        // Map the API response to the format we need
+        return response.data.map((tech) => ({
+          id: tech.ID,
+          name: tech.FirstName || `Technician ${tech.ID}`,
+        }))
+      }
+
+      console.warn("Unexpected response format from hardware technicians API, using fallback data")
+      return [
+        { id: 70, name: "Hardware Tech 1" },
+        { id: 71, name: "Hardware Tech 2" },
+        { id: 72, name: "Hardware Tech 3" },
+      ]
+    } catch (error) {
+      console.error("Error fetching hardware technicians:", error)
+      // Fallback to mock data if API fails
+      return [
+        { id: 70, name: "Hardware Tech 1" },
+        { id: 71, name: "Hardware Tech 2" },
+        { id: 72, name: "Hardware Tech 3" },
+      ]
+    }
+  },
+
+  /**
+   * Get all vendors
+   */
+  getVendors: async (): Promise<{ id: number; name: string }[]> => {
+    try {
+      const response = await api.get("/ticket/vendor")
+
+      if (response.data && Array.isArray(response.data)) {
+        // Map the API response to the format we need
+        return response.data.map((vendor) => ({
+          id: vendor.IDVendor,
+          name: vendor.Name || `Vendor ${vendor.IDVendor}`,
+        }))
+      }
+
+      console.warn("Unexpected response format from vendors API, using fallback data")
+      return [
+        { id: 1, name: "TechSupply Inc." },
+        { id: 2, name: "Hardware Solutions Ltd." },
+        { id: 3, name: "IT Equipment Partners" },
+      ]
+    } catch (error) {
+      console.error("Error fetching vendors:", error)
+      // Fallback to mock data if API fails
+      return [
+        { id: 1, name: "TechSupply Inc." },
+        { id: 2, name: "Hardware Solutions Ltd." },
+        { id: 3, name: "IT Equipment Partners" },
+      ]
+    }
+  },
+
+  /**
+   * Assign hardware technician or vendor to a ticket
+   */
+  assignHardware: async (codTicket: string, needHardware: number, assignedId: number): Promise<void> => {
+    try {
+      let payload
+
+      if (needHardware === 1) {
+        // Assign hardware technician
+        payload = {
+          CodTicket: codTicket,
+          NeedHardware: 1,
+          AssignedHardwareId: assignedId,
+        }
+      } else if (needHardware === 2) {
+        // Assign vendor
+        payload = {
+          CodTicket: codTicket,
+          NeedHardware: 2,
+          AssignedVendor: assignedId,
+        }
+      } else {
+        throw new Error("Invalid needHardware value. Must be 1 (technician) or 2 (vendor).")
+      }
+
+      await api.post("/ticket/assignHardware", payload)
+      console.log(
+        `Assigned ${needHardware === 1 ? "hardware technician" : "vendor"} ${assignedId} to ticket ${codTicket}`,
+      )
+    } catch (error) {
+      console.error("Error assigning hardware:", error)
       throw error
     }
   },
