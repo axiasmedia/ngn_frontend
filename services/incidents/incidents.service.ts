@@ -70,7 +70,7 @@ export const incidentsService = {
    */
   getIncidentByCod: async (codTicket: string): Promise<Incident> => {
     try {
-      const response = await api.get<Incident>(`/ticket/${codTicket}`)
+      const response = await api.get<Incident>(`/ticket/allticket/${codTicket}`)
       return response.data
     } catch (error) {
       console.error(`Error fetching incident with code ${codTicket}:`, error)

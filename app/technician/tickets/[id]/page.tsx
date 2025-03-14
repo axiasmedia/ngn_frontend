@@ -124,7 +124,7 @@ export default function TicketDetailPage() {
         // Make a direct API call to fetch the ticket by its code
         try {
           // Direct API call to the ticket endpoint using the API client
-          const response = await api.get(`/ticket/${codTicket}`)
+          const response = await api.get(`/ticket/allticket/${codTicket}`)
           const ticketData = response.data
           console.log("Ticket data received:", ticketData)
 
