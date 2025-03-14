@@ -1,7 +1,6 @@
 "use client"
 
 import { ScrollArea } from "@/components/ui/scroll-area"
-
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -33,11 +32,10 @@ import Link from "next/link"
 import { incidentsService } from "@/services/incidents/incidents.service"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
-import api from "@/services/api"
 import { useAuth } from "@/components/auth/auth-provider"
 import { useTicketStatuses } from "@/hooks/useTicketStatuses"
 import { useTicketUpdates } from "@/hooks/useTicketUpdates"
-
+import { userService } from "@/services/user/user.service"
 export default function IncidentDetailsPage() {
   const params = useParams()
   const router = useRouter()
@@ -88,40 +86,20 @@ export default function IncidentDetailsPage() {
 
       try {
         setLoading(true)
-
-        // Use the same endpoint as the list page, but filter for the specific ticket
-        const response = await api.get(`/ticket/by-user/${userInfo.id}`)
-
-        if (response.data && Array.isArray(response.data)) {
-          // Find the specific ticket with matching CodTicket
-          const ticketData = response.data.find((ticket) => ticket.CodTicket === codTicket)
-
-          if (ticketData) {
+        try {
+          const ticketData = await incidentsService.getIncidentByCod(codTicket)
             // Get creator's name from API
             let creatorName = "Unknown"
             let assigneeName = "Unassigned"
+            
 
             try {
               if (ticketData.CreatedBy) {
-                const creatorResponse = await api.get(`/ticket/user/${ticketData.CreatedBy}`)
-                if (creatorResponse.data && creatorResponse.data.length > 0) {
-                  const creator = creatorResponse.data[0]
-                  creatorName =
-                    `${creator.FirstName || ""} ${creator.LastName || ""}`.trim() ||
-                    creator.Username ||
-                    `User ${ticketData.CreatedBy}`
-                }
+                creatorName = await userService.getUserName(ticketData.CreatedBy)
               }
 
               if (ticketData.AssignedToUser) {
-                const assigneeResponse = await api.get(`/ticket/user/${ticketData.AssignedToUser}`)
-                if (assigneeResponse.data && assigneeResponse.data.length > 0) {
-                  const assignee = assigneeResponse.data[0]
-                  assigneeName =
-                    `${assignee.FirstName || ""} ${assignee.LastName || ""}`.trim() ||
-                    assignee.Username ||
-                    `User ${ticketData.AssignedToUser}`
-                }
+                assigneeName = await userService.getUserName(ticketData.AssignedToUser)
               }
             } catch (userError) {
               console.error("Error fetching user details:", userError)
@@ -139,32 +117,19 @@ export default function IncidentDetailsPage() {
               createdById: ticketData.CreatedBy, // Keep the ID for reference
               assignee: assigneeName, // Use name from API
               openDate: formatDateSafely(ticketData.CreatedDatatime),
-              dueDate: formatDateSafely(ticketData.DueDate),
+              dueDate: formatDateSafely(ticketData.DueDatetime),
               account: "Chrysalis Health",
               contract: "Standard Support",
-              notes: ticketData.Notes || [],
               createdAt: ticketData.CreatedDatatime,
-              updatedAt: ticketData.ModDatetime,
+              updatedAt: ticketData.DueDatetime,
             })
-          } else {
-            setError(`Ticket ${codTicket} not found`)
-          }
-        } else {
-          // Fallback to the mock implementation if API doesn't return data
-          const data = await incidentsService.getIncidentById(codTicket)
-          setIncident(data)
-        }
       } catch (err) {
         console.error("Error fetching ticket:", err)
-
-        // Try the mock service as fallback
-        try {
-          const data = await incidentsService.getIncidentById(codTicket)
-          setIncident(data)
-        } catch (fallbackErr) {
           setError("Failed to load incident details")
-          console.error("Fallback error:", fallbackErr)
         }
+      } catch (err) {
+        console.error("Error fetching incident details:", err)
+        setError("Failed to load incident details")
       } finally {
         setLoading(false)
       }

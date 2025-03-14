@@ -49,8 +49,6 @@ export function useIncidentDetails(id: string) {
   const fetchIncident = useCallback(async () => {
     try {
       setLoading(true)
-      const data = await incidentsService.getIncidentById(id)
-      setIncident(data)
       setError(null)
     } catch (err) {
       setError("Failed to fetch incident details")

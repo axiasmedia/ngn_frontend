@@ -1,5 +1,5 @@
 "use client"
-
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -44,13 +44,13 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
-import api from "@/services/api"
 import { userService } from "@/services/user/user.service"
 import { useTicketStatuses } from "@/hooks/useTicketStatuses"
 import { incidentsService } from "@/services/incidents/incidents.service"
 import { useTicketUpdates } from "@/hooks/useTicketUpdates"
 import { AssignTechnicianDialog } from "@/components/features/technician/assign-technician-dialog"
 import { productService } from "@/services/products/products.service"
+import api from "@/services/api"
 
 interface Note {
   id: string
@@ -78,7 +78,7 @@ interface Ticket {
   AssignedUserName?: string
   Availability: string
   CreatedDatatime: string
-  ModDatetime: string | null
+  DueDatetime: string | null
   AssignedHWMS: number | null
   AssignedVendor: number | null
   NeedHardware: number
@@ -112,72 +112,97 @@ export default function TicketDetailPage() {
   const [vendors, setVendors] = useState<{ id: number; name: string }[]>([])
   const [loadingHardwareOptions, setLoadingHardwareOptions] = useState(false)
   const [productName, setProductName] = useState<string>("")
+
   const { statuses, getStatusDescription } = useTicketStatuses()
   const { notes: ticketNotes, loading: notesLoading } = useTicketUpdates(codTicket)
-
 
   useEffect(() => {
     const fetchTicket = async () => {
       try {
         setLoading(true)
 
-        // Fetch all tickets from the queue
-        const response = await api.get("/ticket/queu")
+        // Make a direct API call to fetch the ticket by its code
+        try {
+          // Direct API call to the ticket endpoint using the API client
+          const response = await api.get(`/ticket/${codTicket}`)
+          const ticketData = response.data
+          console.log("Ticket data received:", ticketData)
 
-        if (response.data && Array.isArray(response.data)) {
-          // Find the specific ticket with matching CodTicket
-          const ticketData = response.data.find((t: Ticket) => t.CodTicket === codTicket)
-
-          if (ticketData) {
-            // Get creator name
-            let creatorName = "Unknown"
-            if (ticketData.CreatedBy) {
-              try {
-                creatorName = await userService.getUserName(ticketData.CreatedBy)
-              } catch (err) {
-                console.error("Error fetching creator name:", err)
-              }
+          // Get creator name
+          let creatorName = "Unknown"
+          if (ticketData.CreatedBy) {
+            try {
+              creatorName = await userService.getUserName(ticketData.CreatedBy)
+            } catch (err) {
+              console.error("Error fetching creator name:", err)
             }
-
-            // Get assignee name if assigned
-            let assigneeName = "Unassigned"
-            if (ticketData.AssignedToUser) {
-              try {
-                assigneeName = await userService.getUserName(ticketData.AssignedToUser)
-              } catch (err) {
-                console.error("Error fetching assignee name:", err)
-              }
-            }
-
-            // Set the ticket with additional information
-            const enrichedTicket = {
-              ...ticketData,
-              CreatedByName: creatorName,
-              AssignedUserName: assigneeName,
-              notes: ticketData.notes || [],
-            }
-
-            setTicket(enrichedTicket)
-            if(ticketData.AffectedProduct){
-              try{
-                const name = await productService.getProductName(ticketData.AffectedProduct)
-                setProductName(name)
-              }catch(err){
-                console.error("Error fecthing product name", err)
-                setProductName(`Unkown Product (ID: ${ticketData.AffectedProduct})`)
-              }
-            }
-            setNotes(enrichedTicket.notes || [])
-            setNewStatus(enrichedTicket.Status)
-            setRequiresChange(!!enrichedTicket.NeedHardware)
-
-            // Set the notes in the state
-            setNotes(ticketNotes)
-          } else {
-            setError(`Ticket ${codTicket} not found`)
           }
-        } else {
-          setError("Invalid response format from API")
+
+          // Get assignee name if assigned
+          let assigneeName = "Unassigned"
+          if (ticketData.AssignedToUser) {
+            try {
+              assigneeName = await userService.getUserName(ticketData.AssignedToUser)
+            } catch (err) {
+              console.error("Error fetching assignee name:", err)
+            }
+          }
+
+          // Ensure numeric values are properly converted from strings if needed
+          const enrichedTicket: Ticket = {
+            ...ticketData,
+            // Ensure these are the correct types
+            IDTicket:
+              typeof ticketData.IDTicket === "string" ? Number.parseInt(ticketData.IDTicket) : ticketData.IDTicket,
+            ClientID:
+              typeof ticketData.ClientID === "string" ? Number.parseInt(ticketData.ClientID) : ticketData.ClientID,
+            Status: typeof ticketData.Status === "string" ? Number.parseInt(ticketData.Status) : ticketData.Status,
+            AffectedProduct:
+              typeof ticketData.AffectedProduct === "string"
+                ? Number.parseInt(ticketData.AffectedProduct)
+                : ticketData.AffectedProduct,
+            CreatedBy:
+              typeof ticketData.CreatedBy === "string" ? Number.parseInt(ticketData.CreatedBy) : ticketData.CreatedBy,
+            AssignedToUser:
+              ticketData.AssignedToUser === null
+                ? null
+                : typeof ticketData.AssignedToUser === "string"
+                  ? Number.parseInt(ticketData.AssignedToUser)
+                  : ticketData.AssignedToUser,
+            NeedHardware:
+              typeof ticketData.NeedHardware === "string"
+                ? Number.parseInt(ticketData.NeedHardware)
+                : ticketData.NeedHardware,
+            // Add the additional properties
+            CreatedByName: creatorName,
+            AssignedUserName: assigneeName,
+            notes: ticketData.notes || [],
+          }
+
+          setTicket(enrichedTicket)
+          if (ticketData.AffectedProduct) {
+            try {
+              const name = await productService.getProductName(
+                typeof ticketData.AffectedProduct === "string"
+                  ? Number.parseInt(ticketData.AffectedProduct)
+                  : ticketData.AffectedProduct,
+              )
+              setProductName(name)
+            } catch (err) {
+              console.error("Error fetching product name:", err)
+              setProductName(`Unknown Product (ID: ${ticketData.AffectedProduct})`)
+            }
+          }
+
+          // Set the initial status to match the ticket's current status
+          setNewStatus(enrichedTicket.Status)
+          setRequiresChange(!!enrichedTicket.NeedHardware)
+
+          // Set the notes in the state
+          setNotes(ticketNotes)
+        } catch (err) {
+          console.error("Error fetching ticket:", err)
+          setError(`Ticket ${codTicket} not found`)
         }
       } catch (err) {
         console.error("Error fetching ticket:", err)
@@ -292,12 +317,13 @@ export default function TicketDetailPage() {
     }
   }
 
+  // Update the handleHardwareChange function to reload the page after saving changes
   const handleHardwareChange = async () => {
     if (!ticket) return
 
     try {
-       // If hardware is not required, just update the UI
-       if (!requiresChange) {
+      // If hardware is not required, just update the UI
+      if (!requiresChange) {
         // Add a note about the hardware change
         const hardwareNote = {
           id: Date.now().toString(),
@@ -314,9 +340,12 @@ export default function TicketDetailPage() {
           assignedTo: undefined,
         })
         setNotes([...notes, hardwareNote])
+
+        // Reload the page after a short delay
         setTimeout(() => {
           window.location.reload()
         }, 500)
+
         return
       }
 
@@ -336,7 +365,7 @@ export default function TicketDetailPage() {
       // Get the name of the assigned entity
       const assigneeName =
         assignType === "technician"
-           ? hardwareTechnicians.find((t) => t.id === assignedId)?.name || `Technician ${assignedId}`
+          ? hardwareTechnicians.find((t) => t.id === assignedId)?.name || `Technician ${assignedId}`
           : vendors.find((v) => v.id === assignedId)?.name || `Vendor ${assignedId}`
 
       // Add a note about the hardware change
@@ -354,8 +383,12 @@ export default function TicketDetailPage() {
         assignType: assignType,
         assignedTo: assignedTo,
       })
-      // Clear any previous errors
       setNotes([...notes, hardwareNote])
+
+      // Clear any previous errors
+      setError(null)
+
+      // Reload the page after a short delay to show the updated state
       setTimeout(() => {
         window.location.reload()
       }, 500)
@@ -506,9 +539,13 @@ export default function TicketDetailPage() {
       </div>
     )
   }
+
+  // Update the handleRefresh function to properly refresh the page after assignment
   const handleRefresh = () => {
+    // Force a complete page reload to ensure fresh data
     window.location.reload()
   }
+
   return (
     <div className="container mx-auto py-6">
       <div className="mb-6">
@@ -655,7 +692,7 @@ export default function TicketDetailPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium">Last Modified</p>
-                  <p className="text-sm text-muted-foreground">{formatDate(ticket.ModDatetime) || "Not modified"}</p>
+                  <p className="text-sm text-muted-foreground">{formatDate(ticket.DueDatetime) || "Not modified"}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium">Availability</p>
@@ -737,21 +774,22 @@ export default function TicketDetailPage() {
                       </div>
                     </RadioGroup>
                   </div>
+
                   {assignType === "technician" && (
                     <div className="space-y-2">
-                       <Label>Select Hardware Technician</Label>
+                      <Label>Select Hardware Technician</Label>
                       {loadingHardwareOptions ? (
                         <div className="flex items-center space-x-2 py-2">
                           <Loader2 className="h-4 w-4 animate-spin" />
                           <span className="text-sm text-muted-foreground">Loading technicians...</span>
                         </div>
                       ) : (
-                      <Select value={assignedTo} onValueChange={setAssignedTo}>
-                        <SelectTrigger>
-                        <SelectValue placeholder="Select a hardware technician" />
-                        </SelectTrigger>
-                        <SelectContent>
-                        {hardwareTechnicians.length > 0 ? (
+                        <Select value={assignedTo} onValueChange={setAssignedTo}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a hardware technician" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {hardwareTechnicians.length > 0 ? (
                               hardwareTechnicians.map((tech) => (
                                 <SelectItem key={tech.id} value={tech.id.toString()}>
                                   {tech.name}
@@ -762,11 +800,12 @@ export default function TicketDetailPage() {
                                 No technicians available
                               </SelectItem>
                             )}
-                        </SelectContent>
-                      </Select>
+                          </SelectContent>
+                        </Select>
                       )}
                     </div>
                   )}
+
                   {assignType === "vendor" && (
                     <div className="space-y-2">
                       <Label>Select Vendor</Label>
@@ -776,12 +815,12 @@ export default function TicketDetailPage() {
                           <span className="text-sm text-muted-foreground">Loading vendors...</span>
                         </div>
                       ) : (
-                      <Select value={assignedTo} onValueChange={setAssignedTo}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a vendor" />
-                        </SelectTrigger>
-                        <SelectContent>
-                        {vendors.length > 0 ? (
+                        <Select value={assignedTo} onValueChange={setAssignedTo}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a vendor" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {vendors.length > 0 ? (
                               vendors.map((vendor) => (
                                 <SelectItem key={vendor.id} value={vendor.id.toString()}>
                                   {vendor.name}
@@ -792,9 +831,9 @@ export default function TicketDetailPage() {
                                 No vendors available
                               </SelectItem>
                             )}
-                        </SelectContent>
-                      </Select>
-                       )}
+                          </SelectContent>
+                        </Select>
+                      )}
                     </div>
                   )}
 
@@ -806,9 +845,9 @@ export default function TicketDetailPage() {
                       <AlertDescription>
                         This ticket will be shared with {assignType === "technician" ? "technician" : "vendor"}:{" "}
                         {assignType === "technician"
-                         ? hardwareTechnicians.find((t) => t.id === Number(assignedTo))?.name ||
-                         `Technician ${assignedTo}`
-                       : vendors.find((v) => v.id === Number(assignedTo))?.name || `Vendor ${assignedTo}`}
+                          ? hardwareTechnicians.find((t) => t.id === Number(assignedTo))?.name ||
+                            `Technician ${assignedTo}`
+                          : vendors.find((v) => v.id === Number(assignedTo))?.name || `Vendor ${assignedTo}`}
                       </AlertDescription>
                     </Alert>
                   )}
@@ -827,6 +866,7 @@ export default function TicketDetailPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
+            <ScrollArea className="h-[300px] pr-4">
               <div className="space-y-4">
                 {notes.length > 0 ? (
                   notes.map((note) => (
@@ -843,6 +883,7 @@ export default function TicketDetailPage() {
                   <p className="text-muted-foreground">No notes available for this ticket.</p>
                 )}
               </div>
+              </ScrollArea>
 
               <Separator />
 
