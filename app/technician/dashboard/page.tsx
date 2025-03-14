@@ -150,7 +150,7 @@ export default function TechnicianDashboardPage() {
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString)
-      return format(date, "dd/MM/yyyy HH:mm")
+      return format(date, "MMM dd, h:mm a")
     } catch (error) {
       return "Invalid date"
     }
@@ -367,12 +367,12 @@ export default function TechnicianDashboardPage() {
                     <TableHeader className="sticky top-0 bg-background z-10">
                       <TableRow className="hover:bg-transparent">
                         <TableHead className="w-[10%] font-semibold">Ticket ID</TableHead>
-                        <TableHead className="w-[18%] font-semibold">Title</TableHead>
+                        <TableHead className="w-[16%] font-semibold">Title</TableHead>
                         <TableHead className="w-[10%] font-semibold">Client</TableHead>
                         <TableHead className="w-[10%] font-semibold">Assignee</TableHead>
-                        <TableHead className="w-[12%] font-semibold">Created</TableHead>
+                        <TableHead className="w-[16%] font-semibold">Created</TableHead>
                         <TableHead className="w-[10%] font-semibold">Priority</TableHead>
-                        <TableHead className="w-[14%] font-semibold">Status</TableHead>
+                        <TableHead className="w-[12%] font-semibold">Status</TableHead>
                         <TableHead className="w-[8%] text-right font-semibold">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -397,7 +397,7 @@ export default function TechnicianDashboardPage() {
                                 {ticket.CodTicket}
                               </div>
                             </TableCell>
-                            <TableCell className="w-[18%] max-w-[250px] truncate font-medium" title={ticket.Title}>
+                            <TableCell className="w-[16%] max-w-[250px] truncate font-medium" title={ticket.Title}>
                               {ticket.Title}
                             </TableCell>
                             <TableCell className="w-[10%] truncate" title={ticket.ClientName}>
@@ -408,11 +408,11 @@ export default function TechnicianDashboardPage() {
                                 {ticket.AssignedToUser ? ticket.AssignedUserName || "Loading..." : "Unassigned"}
                               </div>
                             </TableCell>
-                            <TableCell className="w-[12%]">{formatDate(ticket.CreatedDatatime)}</TableCell>
+                            <TableCell className="w-[16%]">{formatDate(ticket.CreatedDatatime)}</TableCell>
                             <TableCell className="w-[10%]">
                               <Badge className={getPriorityColor(ticket.Priority)}>{ticket.Priority}</Badge>
                             </TableCell>
-                            <TableCell className="w-[14%]">
+                            <TableCell className="w-[12%]">
                               <Badge className={statusInfo.color}>
                                 <span className="flex items-center gap-1">
                                   {statusInfo.icon}
