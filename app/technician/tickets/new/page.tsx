@@ -19,13 +19,7 @@ import { incidentsService } from "@/services/incidents/incidents.service"
 import { useAuth } from "@/components/auth/auth-provider"
 import { useTicketStatuses } from "@/hooks/useTicketStatuses"
 import { useProducts } from "@/hooks/useProducts"
-
-// Mock data for clients, products, etc.
-const MOCK_CLIENTS = [
-  { id: 4, name: "Chrysalis Health" },
-  { id: 5, name: "Medical Center" },
-  { id: 6, name: "Regional Hospital" },
-]
+import { clientService } from "@/services/client/client.service"
 const ISSUE_TYPES = [
   { id: "hardware", name: "Hardware" },
   { id: "software", name: "Software" },
@@ -68,6 +62,8 @@ export default function NewTicketPage() {
   const { userInfo } = useAuth()
   const { statuses, loading: statusesLoading } = useTicketStatuses()
   const { products, loading: productsLoading, error: productsError } = useProducts()
+  const [clients, setClients] = useState<{ id: number; name: string }[]>([])
+  const [loadingClients, setLoadingClients] = useState(true)
   // Form state
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
@@ -132,6 +128,23 @@ export default function NewTicketPage() {
     }
   }, [contactMethodType, userInfo?.email])
 
+  //client effect
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        setLoadingClients(true)
+        const clientData = await clientService.getClients()
+          setClients(clientData)
+      } catch (err) {
+        console.error("Error fetching clients:", err)
+        setClients([])
+      } finally {
+        setLoadingClients(false)
+      }
+    }
+
+    fetchClients()
+  }, [])
   // Update the handleSubmit function to include the contact method
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -242,18 +255,31 @@ export default function NewTicketPage() {
                 <Label htmlFor="client">
                   Client <span className="text-red-500">*</span>
                 </Label>
+                {loadingClients ? (
+                  <div className="flex items-center space-x-2 py-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm text-muted-foreground">Loading clients...</span>
+                  </div>
+                ) : (
                 <Select value={clientId} onValueChange={setClientId} required>
                   <SelectTrigger>
                     <SelectValue placeholder="Select client" />
                   </SelectTrigger>
                   <SelectContent>
-                    {MOCK_CLIENTS.map((client) => (
+                  {clients.length > 0 ? (
+                        clients.map((client) => (
                       <SelectItem key={client.id} value={client.id.toString()}>
                         {client.name}
                       </SelectItem>
-                    ))}
+                      ))
+                    ) : (
+                      <SelectItem value="" disabled>
+                        No clients available
+                      </SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
+                )}
               </div>
 
               {/* Title */}
