@@ -25,7 +25,6 @@ import {
   HelpCircle,
   Plus,
   Search,
-  MoreHorizontal,
   Eye,
   Edit,
   Inbox,
@@ -38,7 +37,6 @@ import { Card, CardContent } from "@/components/ui/card"
 import { motion } from "framer-motion"
 import { useState } from "react"
 import { Input } from "@/components/ui/input"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function TechnicianDashboardPage() {
@@ -365,98 +363,74 @@ export default function TechnicianDashboardPage() {
             <div className="min-w-[1000px] w-full">
               <ScrollArea className="h-[calc(100vh-12rem)]">
                 {filteredTickets.length > 0 ? (
-                  <Table className="w-full table-fixed">
+                  <Table className="w-full table-fixed sticky-header">
                     <TableHeader className="sticky top-0 bg-background z-10">
                       <TableRow className="hover:bg-transparent">
                         <TableHead className="w-[10%] font-semibold">Ticket ID</TableHead>
-                        <TableHead className="w-[20%] font-semibold">Title</TableHead>
+                        <TableHead className="w-[18%] font-semibold">Title</TableHead>
                         <TableHead className="w-[10%] font-semibold">Client</TableHead>
                         <TableHead className="w-[10%] font-semibold">Assignee</TableHead>
-                        <TableHead className="w-[10%] font-semibold">Created</TableHead>
-                        <TableHead className="w-[8%] font-semibold">Priority</TableHead>
-                        <TableHead className="w-[12%] font-semibold">Status</TableHead>
-                        <TableHead className="w-[10%] text-right font-semibold">Actions</TableHead>
+                        <TableHead className="w-[12%] font-semibold">Created</TableHead>
+                        <TableHead className="w-[10%] font-semibold">Priority</TableHead>
+                        <TableHead className="w-[14%] font-semibold">Status</TableHead>
+                        <TableHead className="w-[8%] text-right font-semibold">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      <motion.div variants={containerVariants} initial="hidden" animate="visible">
-                        {filteredTickets.map((ticket) => {
-                          const statusInfo = getStatusInfo(ticket.Status)
-                          return (
-                            <motion.tr
-                              key={ticket.CodTicket}
-                              variants={itemVariants}
-                              className="group border-b hover:bg-gray-50 transition-colors"
-                            >
-                              <TableCell className="font-medium">
-                                <div className="flex items-center">
-                                  <div
-                                    className="w-1.5 h-1.5 rounded-full mr-2"
-                                    style={{
-                                      backgroundColor: statusInfo.color.includes("text-")
-                                        ? statusInfo.color.replace("text-", "var(--") + ")"
-                                        : "var(--muted)",
-                                    }}
-                                  ></div>
-                                  {ticket.CodTicket}
-                                </div>
-                              </TableCell>
-                              <TableCell className="max-w-[250px] truncate font-medium" title={ticket.Title}>
-                                {ticket.Title}
-                              </TableCell>
-                              <TableCell className="truncate" title={ticket.ClientName}>
-                                {ticket.ClientName}
-                              </TableCell>
-                              <TableCell className="max-w-[120px] truncate">
-                                <div className="truncate" title={ticket.AssignedUserName || "Unassigned"}>
-                                  {ticket.AssignedToUser ? ticket.AssignedUserName || "Loading..." : "Unassigned"}
-                                </div>
-                              </TableCell>
-                              <TableCell>{formatDate(ticket.CreatedDatatime)}</TableCell>
-                              <TableCell>
-                                <Badge className={getPriorityColor(ticket.Priority)}>{ticket.Priority}</Badge>
-                              </TableCell>
-                              <TableCell>
-                                <Badge className={statusInfo.color}>
-                                  <span className="flex items-center gap-1">
-                                    {statusInfo.icon}
-                                    <span>{statusInfo.text}</span>
-                                  </span>
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <Link href={`/technician/tickets/${ticket.CodTicket}`}>
-                                    <Button variant="ghost" size="sm" className="h-8 px-2">
-                                      <Eye className="h-4 w-4" />
-                                      <span className="sr-only">View</span>
-                                    </Button>
-                                  </Link>
-                                  <Link href={`/technician/tickets/${ticket.CodTicket}`}>
-                                    <Button variant="ghost" size="sm" className="h-8 px-2">
-                                      <Edit className="h-4 w-4" />
-                                      <span className="sr-only">Edit</span>
-                                    </Button>
-                                  </Link>
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="sm" className="h-8 px-2">
-                                        <MoreHorizontal className="h-4 w-4" />
-                                        <span className="sr-only">More</span>
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                      <DropdownMenuItem>Assign to me</DropdownMenuItem>
-                                      <DropdownMenuItem>Change status</DropdownMenuItem>
-                                      <DropdownMenuItem>Add note</DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                </div>
-                              </TableCell>
-                            </motion.tr>
-                          )
-                        })}
-                      </motion.div>
+                      {filteredTickets.map((ticket) => {
+                        const statusInfo = getStatusInfo(ticket.Status)
+                        return (
+                          <TableRow
+                            key={ticket.CodTicket}
+                            className="group border-b hover:bg-gray-50 transition-colors"
+                          >
+                            <TableCell className="w-[10%] font-medium">
+                              <div className="flex items-center">
+                                <div
+                                  className="w-1.5 h-1.5 rounded-full mr-2"
+                                  style={{
+                                    backgroundColor: statusInfo.color.includes("text-")
+                                      ? statusInfo.color.replace("text-", "var(--") + ")"
+                                      : "var(--muted)",
+                                  }}
+                                ></div>
+                                {ticket.CodTicket}
+                              </div>
+                            </TableCell>
+                            <TableCell className="w-[18%] max-w-[250px] truncate font-medium" title={ticket.Title}>
+                              {ticket.Title}
+                            </TableCell>
+                            <TableCell className="w-[10%] truncate" title={ticket.ClientName}>
+                              {ticket.ClientName}
+                            </TableCell>
+                            <TableCell className="w-[10%] max-w-[120px]">
+                              <div className="truncate" title={ticket.AssignedUserName || "Unassigned"}>
+                                {ticket.AssignedToUser ? ticket.AssignedUserName || "Loading..." : "Unassigned"}
+                              </div>
+                            </TableCell>
+                            <TableCell className="w-[12%]">{formatDate(ticket.CreatedDatatime)}</TableCell>
+                            <TableCell className="w-[10%]">
+                              <Badge className={getPriorityColor(ticket.Priority)}>{ticket.Priority}</Badge>
+                            </TableCell>
+                            <TableCell className="w-[14%]">
+                              <Badge className={statusInfo.color}>
+                                <span className="flex items-center gap-1">
+                                  {statusInfo.icon}
+                                  <span>{statusInfo.text}</span>
+                                </span>
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="w-[8%] text-right">
+                              <Link href={`/technician/tickets/${ticket.CodTicket}`}>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                  <Eye className="h-4 w-4" />
+                                  <span className="sr-only">View ticket</span>
+                                </Button>
+                              </Link>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
                     </TableBody>
                   </Table>
                 ) : (
