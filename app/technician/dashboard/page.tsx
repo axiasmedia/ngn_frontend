@@ -311,8 +311,8 @@ export default function TechnicianDashboardPage() {
                         </div>
                         <div>
                           <p className="text-xs text-muted-foreground">Status:</p>
-                          <Badge className={statusInfo.color}>
-                            <span className="flex items-center gap-1">
+                          <Badge className={statusInfo.color + " whitespace-nowrap"}>
+                            <span className="flex items-center gap-1 truncate">
                               {statusInfo.icon}
                               <span>{statusInfo.text}</span>
                             </span>
@@ -370,9 +370,9 @@ export default function TechnicianDashboardPage() {
                         <TableHead className="w-[16%] font-semibold">Title</TableHead>
                         <TableHead className="w-[10%] font-semibold">Client</TableHead>
                         <TableHead className="w-[10%] font-semibold">Assignee</TableHead>
-                        <TableHead className="w-[16%] font-semibold">Created</TableHead>
+                        <TableHead className="w-[14%] font-semibold">Created</TableHead>
                         <TableHead className="w-[10%] font-semibold">Priority</TableHead>
-                        <TableHead className="w-[12%] font-semibold">Status</TableHead>
+                        <TableHead className="w-[16%] font-semibold">Status</TableHead>
                         <TableHead className="w-[8%] text-right font-semibold">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -408,13 +408,13 @@ export default function TechnicianDashboardPage() {
                                 {ticket.AssignedToUser ? ticket.AssignedUserName || "Loading..." : "Unassigned"}
                               </div>
                             </TableCell>
-                            <TableCell className="w-[16%]">{formatDate(ticket.CreatedDatatime)}</TableCell>
+                            <TableCell className="w-[14%]">{formatDate(ticket.CreatedDatatime)}</TableCell>
                             <TableCell className="w-[10%]">
                               <Badge className={getPriorityColor(ticket.Priority)}>{ticket.Priority}</Badge>
                             </TableCell>
-                            <TableCell className="w-[12%]">
-                              <Badge className={statusInfo.color}>
-                                <span className="flex items-center gap-1">
+                            <TableCell className="w-[16%]">
+                              <Badge className={statusInfo.color + " whitespace-nowrap"}>
+                                <span className="flex items-center gap-1 truncate">
                                   {statusInfo.icon}
                                   <span>{statusInfo.text}</span>
                                 </span>

@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
+import { CircleCheck, CircleX, Hourglass } from "lucide-react"
 
 // Mock data - in a real app, this would come from an API
 const mockTickets = [
@@ -67,6 +68,19 @@ export function TicketList() {
     }
   }
 
+  const getStatusIcon = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "open":
+        return <CircleX className="h-4 w-4" />
+      case "in progress":
+        return <Hourglass className="h-4 w-4" />
+      case "resolved":
+        return <CircleCheck className="h-4 w-4" />
+      default:
+        return null
+    }
+  }
+
   return (
     <div className="rounded-md border">
       <Table>
@@ -76,6 +90,7 @@ export function TicketList() {
             <TableHead>Title</TableHead>
             <TableHead>Account</TableHead>
             <TableHead>Owner</TableHead>
+            <TableHead>Assignee</TableHead>
             <TableHead>Open Date</TableHead>
             <TableHead>Due Date</TableHead>
             <TableHead>Priority</TableHead>
@@ -90,13 +105,19 @@ export function TicketList() {
               <TableCell>{ticket.title}</TableCell>
               <TableCell>{ticket.account}</TableCell>
               <TableCell>{ticket.owner}</TableCell>
+              <TableCell>{ticket.assignee}</TableCell>
               <TableCell>{ticket.openDate}</TableCell>
               <TableCell>{ticket.dueDate}</TableCell>
               <TableCell>
                 <Badge className={getPriorityColor(ticket.priority)}>{ticket.priority}</Badge>
               </TableCell>
-              <TableCell>
-                <Badge className={getStatusColor(ticket.status)}>{ticket.status}</Badge>
+              <TableCell className="min-w-[140px]">
+                <Badge className={getStatusColor(ticket.status) + " whitespace-nowrap"}>
+                  <span className="flex items-center gap-1 truncate">
+                    {getStatusIcon(ticket.status)}
+                    {ticket.status}
+                  </span>
+                </Badge>
               </TableCell>
               <TableCell>
                 <Button variant="outline" size="sm" onClick={() => router.push(`/technician/tickets/${ticket.id}`)}>

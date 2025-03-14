@@ -60,6 +60,7 @@ export function useTicketStatuses() {
         Closed: { icon: "check-circle", color: "bg-gray-100 text-gray-800" },
         Pending: { icon: "clock", color: "bg-purple-100 text-purple-800" },
         Cancelled: { icon: "x-circle", color: "bg-red-100 text-red-800" },
+        Unknown: { icon: "help-circle", color: "bg-gray-100 text-gray-800" }, // Add a fallback for unknown statuses
       }
 
       // Process each status from the API
@@ -146,6 +147,7 @@ export function useTicketStatuses() {
         Closed: { icon: "check-circle", color: "bg-gray-100 text-gray-800" },
         Pending: { icon: "clock", color: "bg-purple-100 text-purple-800" },
         Cancelled: { icon: "x-circle", color: "bg-red-100 text-red-800" },
+        Unknown: { icon: "help-circle", color: "bg-gray-100 text-gray-800" },
       }
 
       Object.entries(statusIconMap).forEach(([description, mapping], index) => {
@@ -168,9 +170,29 @@ export function useTicketStatuses() {
 
   // Update the getStatusDescription function to use IDStatusT field
   const getStatusDescription = (statusId: number): string => {
-    // Find status with matching IDStatusT
+    // First try to find the status in our fetched statuses
     const status = statuses.find((s) => s.IDStatusT === statusId)
-    return status?.Description || "Unknown"
+    if (status?.Description) {
+      return status.Description
+    }
+
+    // If not found in fetched statuses, use fallback mapping
+    switch (statusId) {
+      case 1:
+        return "New"
+      case 2:
+        return "In Progress"
+      case 3:
+        return "Resolved"
+      case 4:
+        return "Closed"
+      case 5:
+        return "Pending"
+      case 6:
+        return "Cancelled"
+      default:
+        return "New" // Default to "New" if status is unknown
+    }
   }
 
   // Add new functions to get color and icon based on status description
@@ -185,6 +207,19 @@ export function useTicketStatuses() {
       if (normalizedDesc.toLowerCase().includes(key.toLowerCase())) {
         return value.color
       }
+    }
+
+    // If no match found, return a default color based on keywords
+    if (normalizedDesc.toLowerCase().includes("progress") || normalizedDesc.toLowerCase().includes("pending")) {
+      return "bg-amber-100 text-amber-800"
+    } else if (normalizedDesc.toLowerCase().includes("resolv") || normalizedDesc.toLowerCase().includes("complete")) {
+      return "bg-green-100 text-green-800"
+    } else if (normalizedDesc.toLowerCase().includes("cancel")) {
+      return "bg-red-100 text-red-800"
+    } else if (normalizedDesc.toLowerCase().includes("close")) {
+      return "bg-gray-100 text-gray-800"
+    } else if (normalizedDesc.toLowerCase().includes("new") || normalizedDesc.toLowerCase().includes("open")) {
+      return "bg-blue-100 text-blue-800"
     }
 
     return "bg-gray-100 text-gray-800" // Default fallback
