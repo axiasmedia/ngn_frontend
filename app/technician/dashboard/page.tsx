@@ -23,6 +23,7 @@ import {
   PenToolIcon as Tool,
   User,
   HelpCircle,
+  Plus,
 } from "lucide-react"
 import Link from "next/link"
 import { format } from "date-fns"
@@ -158,71 +159,129 @@ export default function TechnicianDashboardPage() {
         <h1 className="text-2xl font-bold">All Tickets</h1>
         <Link href="/technician/tickets/new">
           <Button size="default" className="w-full sm:w-auto">
+            <Plus className="mr-2 h-4 w-4" />
             Create New Ticket
           </Button>
         </Link>
       </div>
 
-      <Card className="rounded-md border shadow-sm overflow-hidden">
-        <div className="overflow-x-auto custom-scrollbar">
-          <div className="min-w-[1000px] w-full">
-            <ScrollArea className="h-[calc(100vh-12rem)]">
-              <Table className="w-full table-fixed">
-                <TableHeader className="sticky top-0 bg-background z-10">
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="w-[10%] font-semibold">Ticket ID</TableHead>
-                    <TableHead className="w-[20%] font-semibold">Title</TableHead>
-                    <TableHead className="w-[10%] font-semibold">Account</TableHead>
-                    <TableHead className="w-[10%] font-semibold">Owner</TableHead>
-                    <TableHead className="w-[10%] font-semibold">Open Date</TableHead>
-                    <TableHead className="w-[10%] font-semibold">Due Date</TableHead>
-                    <TableHead className="w-[8%] font-semibold">Priority</TableHead>
-                    <TableHead className="w-[12%] font-semibold">Status</TableHead>
-                    <TableHead className="w-[10%] text-right font-semibold">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {tickets.map((ticket) => {
-                    const statusInfo = getStatusInfo(ticket.Status)
-                    return (
-                      <TableRow key={ticket.CodTicket} className="hover:bg-muted/50">
-                        <TableCell className="font-medium">{ticket.CodTicket}</TableCell>
-                        <TableCell className="max-w-[250px] truncate">{ticket.Title}</TableCell>
-                        <TableCell>{ticket.ClientName}</TableCell>
-                        <TableCell className="max-w-[120px] truncate">
-                        <div className="truncate">
-                            {ticket.AssignedToUser ? ticket.AssignedUserName || "Loading..." : "Unassigned"}
-                          </div>
-                        </TableCell>
-                        <TableCell>{formatDate(ticket.CreatedDatatime)}</TableCell>
-                        <TableCell>{ticket.Availability ? formatDate(ticket.Availability) : "Not set"}</TableCell>
-                        <TableCell>
-                          <Badge className={getPriorityColor(ticket.Priority)}>{ticket.Priority}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={statusInfo.color}>
-                            <span className="flex items-center gap-1">
-                              {statusInfo.icon}
-                              <span>{statusInfo.text}</span>
-                            </span>
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right min-w-[120px]">
-                          <Link href={`/technician/tickets/${ticket.CodTicket}`} className="block">
-                            <Button variant="outline" size="sm" className="w-full whitespace-nowrap">
-                              View Details
-                            </Button>
-                          </Link>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            </ScrollArea>
+      {/* Mobile view - Card-based layout for small screens */}
+      <div className="md:hidden space-y-4">
+        {tickets.map((ticket) => {
+          const statusInfo = getStatusInfo(ticket.Status)
+          return (
+            <Card key={ticket.CodTicket} className="p-4">
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <h3 className="font-medium">{ticket.Title}</h3>
+                  <p className="text-sm text-muted-foreground">#{ticket.CodTicket}</p>
+                </div>
+                <Badge className={getPriorityColor(ticket.Priority)}>{ticket.Priority}</Badge>
+              </div>
+
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 mb-3 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Client:</p>
+                  <p className="truncate">{ticket.ClientName}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Assignee:</p>
+                  <p className="truncate">
+                    {ticket.AssignedToUser ? ticket.AssignedUserName || "Loading..." : "Unassigned"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Created:</p>
+                  <p>{formatDate(ticket.CreatedDatatime)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Status:</p>
+                  <Badge className={statusInfo.color}>
+                    <span className="flex items-center gap-1">
+                      {statusInfo.icon}
+                      <span>{statusInfo.text}</span>
+                    </span>
+                  </Badge>
+                </div>
+              </div>
+
+              <Link href={`/technician/tickets/${ticket.CodTicket}`} className="block w-full">
+                <Button variant="outline" size="sm" className="w-full mt-2">
+                  View Details
+                </Button>
+              </Link>
+            </Card>
+          )
+        })}
+      </div>
+
+      {/* Desktop view - Table-based layout with both horizontal and vertical scrollbars */}
+      <div className="hidden md:block">
+        <Card className="rounded-md border shadow-sm overflow-hidden">
+          <div className="overflow-x-auto custom-scrollbar">
+            <div className="min-w-[1000px] w-full">
+              <ScrollArea className="h-[calc(100vh-12rem)]">
+                <Table className="w-full table-fixed">
+                  <TableHeader className="sticky top-0 bg-background z-10">
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="w-[10%] font-semibold">Ticket ID</TableHead>
+                      <TableHead className="w-[20%] font-semibold">Title</TableHead>
+                      <TableHead className="w-[10%] font-semibold">Client</TableHead>
+                      <TableHead className="w-[10%] font-semibold">Assignee</TableHead>
+                      <TableHead className="w-[10%] font-semibold">Created</TableHead>
+                      <TableHead className="w-[10%] font-semibold">Due Date</TableHead>
+                      <TableHead className="w-[8%] font-semibold">Priority</TableHead>
+                      <TableHead className="w-[12%] font-semibold">Status</TableHead>
+                      <TableHead className="w-[10%] text-right font-semibold">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {tickets.map((ticket) => {
+                      const statusInfo = getStatusInfo(ticket.Status)
+                      return (
+                        <TableRow key={ticket.CodTicket} className="hover:bg-muted/50">
+                          <TableCell className="font-medium">{ticket.CodTicket}</TableCell>
+                          <TableCell className="max-w-[250px] truncate" title={ticket.Title}>
+                            {ticket.Title}
+                          </TableCell>
+                          <TableCell className="truncate" title={ticket.ClientName}>
+                            {ticket.ClientName}
+                          </TableCell>
+                          <TableCell className="max-w-[120px] truncate">
+                            <div className="truncate" title={ticket.AssignedUserName || "Unassigned"}>
+                              {ticket.AssignedToUser ? ticket.AssignedUserName || "Loading..." : "Unassigned"}
+                            </div>
+                          </TableCell>
+                          <TableCell>{formatDate(ticket.CreatedDatatime)}</TableCell>
+                          <TableCell>{ticket.Availability ? formatDate(ticket.Availability) : "Not set"}</TableCell>
+                          <TableCell>
+                            <Badge className={getPriorityColor(ticket.Priority)}>{ticket.Priority}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={statusInfo.color}>
+                              <span className="flex items-center gap-1">
+                                {statusInfo.icon}
+                                <span>{statusInfo.text}</span>
+                              </span>
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right min-w-[120px]">
+                            <Link href={`/technician/tickets/${ticket.CodTicket}`} className="block">
+                              <Button variant="outline" size="sm" className="w-full whitespace-nowrap">
+                                View Details
+                              </Button>
+                            </Link>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
+            </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      </div>
     </div>
   )
 }
