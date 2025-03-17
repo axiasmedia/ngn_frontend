@@ -135,11 +135,50 @@
 /* Responsive table styles */
 .responsive-table-container {
   @apply w-full overflow-x-auto custom-scrollbar;
+  position: relative;
 }
 
 @media (max-width: 768px) {
   .responsive-table-container table {
     @apply min-w-[700px];
   }
+}
+
+/* Table specific styles */
+.table-fixed {
+  table-layout: fixed !important;
+}
+
+/* Ensure table cells maintain their width */
+td,
+th {
+  box-sizing: border-box;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Ensure the table header stays fixed during scroll */
+.sticky-header th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: hsl(var(--background));
+  box-shadow: 0 1px 0 hsl(var(--border));
+}
+
+/* Email content styling */
+.email-content {
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
+.email-content p {
+  margin-bottom: 0.5rem;
+}
+
+.email-content a {
+  color: hsl(var(--primary));
+  text-decoration: underline;
 }
 
