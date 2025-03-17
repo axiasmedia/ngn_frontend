@@ -11,9 +11,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { LogOut, Settings, User, Wrench } from "lucide-react"
+import { LogOut, Settings, User, Wrench, Shield } from "lucide-react"
 import { useAuth } from "@/components/auth/auth-provider"
 import { useUser } from "@/hooks/useUser"
+import Link from "next/link"
 
 export function UserMenu() {
   const { userRole, logout } = useAuth()
@@ -22,6 +23,7 @@ export function UserMenu() {
   // Generate avatar text from user name or use fallback
   const getAvatarText = () => {
     if (loading || !user?.name) {
+      if (userRole === "Admin") return "A"
       return userRole === "User" ? "U" : "T"
     }
 
@@ -32,16 +34,24 @@ export function UserMenu() {
     return nameParts[0].substring(0, 2).toUpperCase()
   }
 
+  // Get avatar background color based on role
+  const getAvatarColor = () => {
+    if (userRole === "Admin") return "bg-purple-600"
+    return "bg-primary"
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 flex items-center gap-2 rounded-full">
           <Avatar className="h-8 w-8">
             <AvatarImage src={user?.avatar || "/placeholder.svg?height=32&width=32"} alt={user?.name || "User"} />
-            <AvatarFallback className="bg-primary text-primary-foreground">{getAvatarText()}</AvatarFallback>
+            <AvatarFallback className={`${getAvatarColor()} text-primary-foreground`}>{getAvatarText()}</AvatarFallback>
           </Avatar>
           <span className="hidden sm:inline-block text-sm font-medium">
-            {loading ? "Loading..." : user?.name || (userRole === "User" ? "User" : "Technician")}
+            {loading
+              ? "Loading..."
+              : user?.name || (userRole === "Admin" ? "Administrator" : userRole === "User" ? "User" : "Technician")}
           </span>
         </Button>
       </DropdownMenuTrigger>
@@ -65,6 +75,14 @@ export function UserMenu() {
             <Settings className="mr-2 h-4 w-4" />
             <span>Settings</span>
           </DropdownMenuItem>
+          {userRole === "Admin" && (
+            <Link href="/admin/dashboard">
+              <DropdownMenuItem>
+                <Shield className="mr-2 h-4 w-4" />
+                <span>Admin Dashboard</span>
+              </DropdownMenuItem>
+            </Link>
+          )}
           {userRole !== "User" && (
             <DropdownMenuItem>
               <Wrench className="mr-2 h-4 w-4" />

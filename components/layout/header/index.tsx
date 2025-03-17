@@ -15,9 +15,11 @@ export function Header() {
       <div className="flex items-center gap-4">
         <MobileNav />
         <Logo />
-        {userRole === "technician" && (
+        {userRole === "Admin" ? (
+          <span className="text-sm font-medium bg-purple-100 text-purple-700 px-2 py-1 rounded">Admin Mode</span>
+        ) : userRole === "Technician" ? (
           <span className="text-sm font-medium bg-primary/10 text-primary px-2 py-1 rounded">Technician Mode</span>
-        )}
+        ) : null}
       </div>
 
       <div className="flex items-center gap-4">
