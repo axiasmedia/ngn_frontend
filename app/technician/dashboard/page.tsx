@@ -32,7 +32,7 @@ import { format } from "date-fns"
 import { useTicketStatuses } from "@/hooks/useTicketStatuses"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Card, CardContent } from "@/components/ui/card"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -272,10 +272,22 @@ export default function TechnicianDashboardPage() {
       {/* Mobile view - Card-based layout for small screens */}
       <motion.div className="md:hidden space-y-4" variants={containerVariants} initial="hidden" animate="visible">
         {filteredTickets.length > 0 ? (
-          filteredTickets.map((ticket, index) => {
+          <AnimatePresence mode="popLayout">
+            {filteredTickets.map((ticket, index) => {
             const statusInfo = getStatusInfo(ticket.Status)
             return (
-              <motion.div key={ticket.CodTicket} variants={itemVariants}>
+              <motion.div
+                  key={ticket.CodTicket}
+                  variants={itemVariants}
+                  layout
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{
+                    opacity: 0,
+                    y: -10,
+                    transition: { duration: 0.2 },
+                  }}
+                >
                 <Card
                   className="overflow-hidden border-l-4 cursor-pointer hover:shadow-md transition-shadow"
                   style={{
@@ -321,13 +333,16 @@ export default function TechnicianDashboardPage() {
                         </div>
                       </div>
                     </div>
-                    <div className="p-2 text-xs text-center text-muted-foreground border-t">Click to view details</div>
+                    <div className="p-2 text-xs text-center text-muted-foreground border-t">
+                        Click to view details
+                      </div>
                     
                   </CardContent>
                 </Card>
               </motion.div>
             )
-          })
+          })}
+          </AnimatePresence>
         ) : (
           <motion.div variants={itemVariants} className="text-center py-12">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
@@ -364,13 +379,21 @@ export default function TechnicianDashboardPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
+                    <AnimatePresence mode="popLayout">
                       {filteredTickets.map((ticket) => {
                         const statusInfo = getStatusInfo(ticket.Status)
                         return (
-                          <TableRow
+                          <motion.tr
                             key={ticket.CodTicket}
                             className="group border-b hover:bg-gray-50 transition-colors cursor-pointer"
-                            onClick={() => router.push(`/technician/tickets/${ticket.CodTicket}`)}                          >
+                            onClick={() => router.push(`/technician/tickets/${ticket.CodTicket}`)} layout
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{
+                              opacity: 0,
+                              transition: { duration: 0.15 },
+                            }}                        
+                            >
                             <TableCell className="w-[10%] font-medium">
                               <div className="flex items-center">
                                 <div
@@ -407,9 +430,10 @@ export default function TechnicianDashboardPage() {
                                 </span>
                               </Badge>
                             </TableCell>
-                          </TableRow>
+                          </motion.tr>
                         )
                       })}
+                      </AnimatePresence>
                     </TableBody>
                   </Table>
                 ) : (
