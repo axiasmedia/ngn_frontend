@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import { CircleCheck, CircleX, Hourglass } from "lucide-react"
 
@@ -100,7 +99,11 @@ export function TicketList() {
         </TableHeader>
         <TableBody>
           {tickets.map((ticket) => (
-            <TableRow key={ticket.id}>
+            <TableRow
+              key={ticket.id}
+              className="cursor-pointer hover:bg-gray-50"
+              onClick={() => router.push(`/technician/tickets/${ticket.id}`)}
+            >
               <TableCell className="font-medium">{ticket.id}</TableCell>
               <TableCell>{ticket.title}</TableCell>
               <TableCell>{ticket.account}</TableCell>
@@ -118,11 +121,6 @@ export function TicketList() {
                     {ticket.status}
                   </span>
                 </Badge>
-              </TableCell>
-              <TableCell>
-                <Button variant="outline" size="sm" onClick={() => router.push(`/technician/tickets/${ticket.id}`)}>
-                  View Details
-                </Button>
               </TableCell>
             </TableRow>
           ))}

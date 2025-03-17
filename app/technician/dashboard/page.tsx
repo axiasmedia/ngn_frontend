@@ -25,8 +25,6 @@ import {
   HelpCircle,
   Plus,
   Search,
-  Eye,
-  Edit,
   Inbox,
 } from "lucide-react"
 import Link from "next/link"
@@ -38,6 +36,7 @@ import { motion } from "framer-motion"
 import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useRouter } from "next/navigation"
 
 export default function TechnicianDashboardPage() {
   const { tickets, loading, error } = useQueueTickets()
@@ -45,6 +44,7 @@ export default function TechnicianDashboardPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [priorityFilter, setPriorityFilter] = useState("all")
+  const router = useRouter()
 
   // Filter tickets based on search query and filters
   const filteredTickets = tickets.filter((ticket) => {
@@ -277,12 +277,13 @@ export default function TechnicianDashboardPage() {
             return (
               <motion.div key={ticket.CodTicket} variants={itemVariants}>
                 <Card
-                  className="overflow-hidden border-l-4"
+                  className="overflow-hidden border-l-4 cursor-pointer hover:shadow-md transition-shadow"
                   style={{
                     borderLeftColor: statusInfo.color.includes("bg-")
                       ? statusInfo.color.replace("bg-", "var(--") + ")"
                       : "var(--border)",
                   }}
+                  onClick={() => router.push(`/technician/tickets/${ticket.CodTicket}`)}
                 >
                   <CardContent className="p-0">
                     <div className="p-4">
@@ -320,21 +321,8 @@ export default function TechnicianDashboardPage() {
                         </div>
                       </div>
                     </div>
-
-                    <div className="flex border-t divide-x">
-                      <Link href={`/technician/tickets/${ticket.CodTicket}`} className="flex-1">
-                        <Button variant="ghost" className="w-full rounded-none h-10 text-sm">
-                          <Eye className="h-4 w-4 mr-2" />
-                          View
-                        </Button>
-                      </Link>
-                      <Link href={`/technician/tickets/${ticket.CodTicket}`} className="flex-1">
-                        <Button variant="ghost" className="w-full rounded-none h-10 text-sm">
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit
-                        </Button>
-                      </Link>
-                    </div>
+                    <div className="p-2 text-xs text-center text-muted-foreground border-t">Click to view details</div>
+                    
                   </CardContent>
                 </Card>
               </motion.div>
@@ -373,7 +361,6 @@ export default function TechnicianDashboardPage() {
                         <TableHead className="w-[14%] font-semibold">Created</TableHead>
                         <TableHead className="w-[10%] font-semibold">Priority</TableHead>
                         <TableHead className="w-[16%] font-semibold">Status</TableHead>
-                        <TableHead className="w-[8%] text-right font-semibold">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -382,8 +369,8 @@ export default function TechnicianDashboardPage() {
                         return (
                           <TableRow
                             key={ticket.CodTicket}
-                            className="group border-b hover:bg-gray-50 transition-colors"
-                          >
+                            className="group border-b hover:bg-gray-50 transition-colors cursor-pointer"
+                            onClick={() => router.push(`/technician/tickets/${ticket.CodTicket}`)}                          >
                             <TableCell className="w-[10%] font-medium">
                               <div className="flex items-center">
                                 <div
@@ -419,14 +406,6 @@ export default function TechnicianDashboardPage() {
                                   <span>{statusInfo.text}</span>
                                 </span>
                               </Badge>
-                            </TableCell>
-                            <TableCell className="w-[8%] text-right">
-                              <Link href={`/technician/tickets/${ticket.CodTicket}`}>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                  <Eye className="h-4 w-4" />
-                                  <span className="sr-only">View ticket</span>
-                                </Button>
-                              </Link>
                             </TableCell>
                           </TableRow>
                         )
