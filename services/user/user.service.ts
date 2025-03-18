@@ -17,7 +17,7 @@ export const userService = {
         return {
           id: apiUser.ID,
           name: `${apiUser.FirstName || ""} ${apiUser.LastName || ""}`.trim() || apiUser.Username,
-          email: apiUser.Email,
+          email: apiUser.Email || apiUser.PersonalEmail || "",
           role: apiUser.Role,
           clientId: apiUser.ClientID,
           username: apiUser.Username,
@@ -54,7 +54,7 @@ export const userService = {
         return {
           id: apiUser.ID,
           name: `${apiUser.FirstName || ""} ${apiUser.LastName || ""}`.trim() || apiUser.Username,
-          email: apiUser.Email,
+          email: apiUser.Email || apiUser.PersonalEmail || "",
           role: apiUser.Role,
           clientId: apiUser.ClientID,
           username: apiUser.Username,
@@ -91,6 +91,32 @@ export const userService = {
     } catch (error) {
       console.error(`Error getting user name for ID ${userId}:`, error)
       return `User ${userId}`
+    }
+  },
+
+  /**
+   * Get all users from a specific company
+   */
+  getUsersByCompanyId: async (companyId: number): Promise<User[]> => {
+    try {
+      const response = await api.get<ApiUser[]>(`/user/company/${companyId}`)
+
+      // Map the API response to our application's user model
+      return response.data.map((apiUser) => ({
+        id: apiUser.ID,
+        name: `${apiUser.FirstName || ""} ${apiUser.LastName || ""}`.trim() || apiUser.Username,
+        email: apiUser.Email || apiUser.PersonalEmail || "",
+        role: apiUser.Role,
+        clientId: apiUser.ClientID,
+        username: apiUser.Username,
+        personalEmail: apiUser.PersonalEmail,
+        status: apiUser.Status,
+      }))
+    } catch (error) {
+      console.error(`Error fetching users for company ${companyId}:`, error)
+
+      // Return empty array if API fails
+      return []
     }
   },
 }

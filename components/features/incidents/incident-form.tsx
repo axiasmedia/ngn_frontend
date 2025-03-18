@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+import type { User } from "@/services/user/types"
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
@@ -16,20 +17,17 @@ import { AlertCircle, Loader2 } from "lucide-react"
 import { MultiUserSelect } from "./multi-user-select"
 import { DateTimePicker } from "@/components/ui/date-picker"
 import { useAuth } from "@/components/auth/auth-provider"
-import { useUsers } from "@/hooks/useUsers"
 import { useProducts } from "@/hooks/useProducts"
 
 export function IncidentForm() {
   const { isSubmitting, error, handleSubmit, handleFileChange } = useIncidentForm()
   const [peopleAffected, setPeopleAffected] = useState<string>("individual")
-  const [selectedUsers, setSelectedUsers] = useState<Array<{ id: number; name: string }>>([])
+  const [selectedUsers, setSelectedUsers] = useState<User[]>([])
   const [availabilityDate, setAvailabilityDate] = useState<Date | undefined>(undefined)
   const [contactMethod, setContactMethod] = useState<string>("")
   const { userInfo } = useAuth() // Get user info from auth context
-  const { users, loading: loadingUsers } = useUsers("User")
-  const { products, loading: productsLoading, error:
-    productsError} = useProducts()
-  
+  const { products, loading: productsLoading, error: productsError } = useProducts() // Get products
+
   // Update contact method when it changes
   const handleContactMethodChange = (value: string) => {
     setContactMethod(value)
@@ -45,22 +43,26 @@ export function IncidentForm() {
       contactMethodValue = userInfo.email
     }
 
+    // Get the affected item value and ensure it's a number
+    const affectedItemValue = formData.get("affected-item")
+    const affectedProduct = affectedItemValue ? Number(affectedItemValue) : 2
+
     const payload = {
       Title: formData.get("incident-title") as string,
       Description: formData.get("description") as string,
-      ContactMethod: contactMethodValue as string,
+      ContactMethod: contactMethodValue || "support2@ngnsupport.net",
       Type: "Tech Support",
       Availability: availabilityDate?.toISOString() || new Date().toISOString(),
       // Ensure numeric values are numbers, not strings
-      CreatedBy: userInfo?.id as number,
+      CreatedBy: Number(userInfo?.id || 45),
       Status: 1,
-      ClientID: userInfo?.clientId as number,
-      AffectedProduct: Number(formData.get("affected-item")),
+      ClientID: Number(userInfo?.clientId || 4),
+      AffectedProduct: affectedProduct,
       AffectedUsers:
         peopleAffected === "individual"
-          ? [userInfo?.id as number]
+          ? [Number(userInfo?.id || 45)]
           : selectedUsers.length > 0
-            ? selectedUsers.map((user) => user.id)
+            ? selectedUsers.map((user) => Number(user.id))
             : [45, 46, 47],
     }
 
@@ -70,7 +72,7 @@ export function IncidentForm() {
 
     try {
       console.log("Submitting ticket with payload:", payload)
-      console.log("Files:", files)
+      console.log("JSON payload:", JSON.stringify(payload, null, 2))
 
       // Explicitly pass the files array
       const success = await handleSubmit(payload, files)
@@ -124,12 +126,7 @@ export function IncidentForm() {
                 </p>
               </div>
             ) : (
-              <MultiUserSelect
-              users={users.map((user) => ({ id: user.id, name: user.name }))}
-                selectedUsers={selectedUsers}
-                onUserSelect={setSelectedUsers}
-                isLoading={loadingUsers}
-              />
+              <MultiUserSelect selectedUsers={selectedUsers} onUserSelect={setSelectedUsers} />
             )}
           </div>
 
@@ -138,10 +135,10 @@ export function IncidentForm() {
             <h2 className="text-lg font-medium text-primary">What is being affected?</h2>
             <Select name="affected-item">
               <SelectTrigger>
-              <SelectValue placeholder={productsLoading ? "Loading products..." : "Select affected item"} />
+                <SelectValue placeholder={productsLoading ? "Loading products..." : "Select affected item"} />
               </SelectTrigger>
               <SelectContent>
-              {productsLoading ? (
+                {productsLoading ? (
                   <div className="flex items-center justify-center py-2">
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
                     <span>Loading products...</span>
