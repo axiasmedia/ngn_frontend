@@ -5,9 +5,11 @@ import TechnicianServiceGrid from "@/components/features/technician/service-grid
 
 export default function TechnicianDashboardPage() {
   return (
-    <div className="container mx-auto p-4 lg:p-6">
+    <div className="w-full">
       <TechnicianWelcomeBanner />
-      <TechnicianServiceGrid />
+      <div className="container mx-auto px-4 lg:px-6">
+        <TechnicianServiceGrid />
+      </div>
     </div>
   )
 }
