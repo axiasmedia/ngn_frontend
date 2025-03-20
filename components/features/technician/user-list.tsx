@@ -1,14 +1,16 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Loader2, Mail, User, UserCog, ExternalLink, Inbox } from "lucide-react"
+import { Loader2, Mail, User, UserCog, ExternalLink, Inbox, Ticket } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { motion, AnimatePresence } from "framer-motion"
 import type { User as UserType } from "@/services/user/types"
+import { Tienne } from "next/font/google"
 
 interface UserListProps {
   users: UserType[]
@@ -17,6 +19,7 @@ interface UserListProps {
 }
 
 export function UserList({ users, loading, companyName }: UserListProps) {
+  const router = useRouter()
   const [sortField, setSortField] = useState<keyof UserType>("name")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const [searchQuery, setSearchQuery] = useState<string>("")
@@ -29,6 +32,10 @@ export function UserList({ users, loading, companyName }: UserListProps) {
       setSortField(field)
       setSortDirection("asc")
     }
+  }
+
+  const navigateToUserTickets = (userId: number) =>{
+    router.push(`/technician/users/${userId}/tickets`)
   }
 
   // Sort users
@@ -162,7 +169,7 @@ export function UserList({ users, loading, companyName }: UserListProps) {
                         {sortedUsers.map((user) => (
                           <motion.tr
                             key={user.id}
-                            className="group border-b hover:bg-gray-50 transition-colors"
+                            className="group border-b hover:bg-gray-50 transition-colors coursor-pointer"
                             layout
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
@@ -170,6 +177,8 @@ export function UserList({ users, loading, companyName }: UserListProps) {
                               opacity: 0,
                               transition: { duration: 0.15 },
                             }}
+                            onClick={() => navigateToUserTickets(user.id)
+                            }
                           >
                             <TableCell className="font-medium">
                               <div className="flex items-center gap-2">
@@ -207,13 +216,18 @@ export function UserList({ users, loading, companyName }: UserListProps) {
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-2">
-                                <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                                <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={(e) => {
+                                  e.stopPropagation()
+                                  navigateToUserTickets(user.id)
+                                }}>
+                                  <Ticket className="h-4 w-4" />
+                                  <span className="sr-only">View Tickets</span>
                                   <UserCog className="h-4 w-4" />
                                   <span className="sr-only">Edit</span>
                                 </Button>
-                                <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                                <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={(e) => e.stopPropagation()}>
                                   <ExternalLink className="h-4 w-4" />
-                                  <span className="sr-only">View</span>
+                                  <span className="sr-only">View Profile</span>
                                 </Button>
                               </div>
                             </TableCell>
