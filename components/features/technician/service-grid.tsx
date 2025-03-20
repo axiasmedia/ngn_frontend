@@ -5,7 +5,7 @@ import { useAuth } from "@/components/auth/auth-provider"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Ticket, Users, ClipboardList, Calendar, BarChart3, MessageSquare, FileText, HardDrive, ShoppingCart, Shield } from 'lucide-react'
+import { Ticket, Users, ClipboardList, Calendar, BarChart3, MessageSquare, FileText, HardDrive, ShoppingCart, Shield, UserCog, } from 'lucide-react'
 import Link from "next/link"
 
 export default function TechnicianServiceGrid() {
@@ -64,12 +64,20 @@ export default function TechnicianServiceGrid() {
       iconColor: "text-green-500",
     },
     {
-      title: "Client Management",
-      description: "View and manage client information",
-      icon: <Users className="h-12 w-12 text-purple-500" />,
-      href: "/technician/clients",
+      title: "User Management",
+      description: "View users by company",
+      icon: <UserCog className="h-12 w-12 text-purple-500" />,
+      href: "/technician/users",
       color: "bg-purple-50 dark:bg-purple-950",
       iconColor: "text-purple-500",
+    },
+    {
+      title: "Client Management",
+      description: "View and manage client information",
+      icon: <Users className="h-12 w-12 text-indigo-500" />,
+      href: "/technician/clients",
+      color: "bg-indigo-50 dark:bg-indigo-950",
+      iconColor: "text-indigo-500",
     },
     {
       title: "Knowledge Base",
