@@ -22,7 +22,7 @@ export function useIncidents(userId?: number) {
       setIncidents(data)
       setError(null)
     } catch (err) {
-      setError("Failed to fetch incidents")
+      setError("The user do not have incidents created")
       console.error(err)
     } finally {
       setLoading(false)
