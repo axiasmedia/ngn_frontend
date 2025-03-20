@@ -524,12 +524,10 @@ export default function TicketDetailPage() {
     return (
       <div className="container mx-auto py-6">
         <div className="mb-6">
-          <Link href="/technician/dashboard">
-            <Button variant="ghost" className="pl-0">
+            <Button variant="ghost" className="pl-0" onClick={() => router.back()}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to tickets
             </Button>
-          </Link>
         </div>
 
         <Alert variant="destructive">
@@ -549,12 +547,10 @@ export default function TicketDetailPage() {
   return (
     <div className="container mx-auto py-6">
       <div className="mb-6">
-        <Link href="/technician/dashboard">
-          <Button variant="ghost" className="pl-0">
+          <Button variant="ghost" className="pl-0" onClick={() => router.back()}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to tickets
           </Button>
-        </Link>
       </div>
 
       <div className="grid gap-6">
