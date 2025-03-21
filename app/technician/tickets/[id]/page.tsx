@@ -51,6 +51,7 @@ import { useTicketUpdates } from "@/hooks/useTicketUpdates"
 import { AssignTechnicianDialog } from "@/components/features/technician/assign-technician-dialog"
 import { productService } from "@/services/products/products.service"
 import api from "@/services/api"
+import { useAuth } from "@/components/auth/auth-provider"
 
 interface Note {
   id: string
@@ -115,6 +116,7 @@ export default function TicketDetailPage() {
 
   const { statuses, getStatusDescription } = useTicketStatuses()
   const { notes: ticketNotes, loading: notesLoading } = useTicketUpdates(codTicket)
+  const { userInfo } = useAuth()
 
   useEffect(() => {
     const fetchTicket = async () => {
@@ -281,6 +283,10 @@ export default function TicketDetailPage() {
         return "Unknown"
     }
   }
+ useEffect(() => {
+  if (userInfo) {
+  }
+}, [userInfo]);
 
   // Update the handleStatusChange function to properly call the API with the correct status ID
   const handleStatusChange = async () => {
@@ -291,7 +297,7 @@ export default function TicketDetailPage() {
 
     try {
       // Call the API to update the status
-      await incidentsService.updateStatus(codTicket, newStatus, statusNote)
+      await incidentsService.updateStatus(codTicket, newStatus, statusNote, userInfo?.id)
 
       // Add the status change note
       const statusChangeNote = {
