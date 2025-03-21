@@ -97,16 +97,17 @@ export const incidentsService = {
   /**
    * Update incident status
    */
-  updateStatus: async (incidentId: string, statusId: number, note: string): Promise<void> => {
+  updateStatus: async (incidentId: string, statusId: number, note: string, userId?: number,): Promise<void> => {
     try {
       const payload = {
         CodTicket: incidentId,
         Status: statusId,
         Comments: note,
-        CreatedByAgent: 55, // Using a default agent ID, in a real app this would come from the logged-in user
+        CreatedByAgent: userId,
       }
 
       await api.put("/ticket/update", payload)
+      console.log(payload)
       console.log(`Updated incident ${incidentId} status to ${statusId} with note: ${note}`)
     } catch (error) {
       console.error("Error updating ticket status:", error)
