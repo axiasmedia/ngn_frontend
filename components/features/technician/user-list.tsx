@@ -104,11 +104,11 @@ export function UserList({ users, loading, companyName }: UserListProps) {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle>
-            Users for {companyName} ({users.length})
+            Users for {companyName} ({users.filter((user) => user.role === "User").length})
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          {users.length > 0 ? (
+        {users.filter((user) => user.role === "User").length > 0 ? (
             <div className="overflow-x-auto custom-scrollbar">
               <div className="min-w-[800px] w-full">
                 <ScrollArea className="h-[calc(100vh-20rem)]">
@@ -142,14 +142,6 @@ export function UserList({ users, loading, companyName }: UserListProps) {
                             )}
                           </div>
                         </TableHead>
-                        <TableHead className="w-[15%] font-semibold cursor-pointer" onClick={() => handleSort("role")}>
-                          <div className="flex items-center">
-                            Role
-                            {sortField === "role" && (
-                              <span className="ml-1">{sortDirection === "asc" ? "↑" : "↓"}</span>
-                            )}
-                          </div>
-                        </TableHead>
                         <TableHead
                           className="w-[15%] font-semibold cursor-pointer"
                           onClick={() => handleSort("status")}
@@ -166,7 +158,9 @@ export function UserList({ users, loading, companyName }: UserListProps) {
                     </TableHeader>
                     <TableBody>
                       <AnimatePresence mode="popLayout">
-                        {sortedUsers.map((user) => (
+                          {sortedUsers
+                              .filter((user) => user.role === "User")
+                              .map((user) => (
                           <motion.tr
                             key={user.id}
                             className="group border-b hover:bg-gray-50 transition-colors coursor-pointer"
@@ -205,11 +199,8 @@ export function UserList({ users, loading, companyName }: UserListProps) {
                                 <span className="text-muted-foreground">No email</span>
                               )}
                             </TableCell>
-                            <TableCell>{user.username || <span className="text-muted-foreground">N/A</span>}</TableCell>
                             <TableCell>
-                              <Badge variant="outline" className="bg-blue-50 text-blue-800 border-blue-200">
-                                {user.role || "User"}
-                              </Badge>
+                            {user.username || <span className="text-muted-foreground">N/A</span>}
                             </TableCell>
                             <TableCell>
                               <Badge className={getStatusColor(user.status)}>{user.status || "Unknown"}</Badge>
